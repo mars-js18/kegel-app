@@ -1,232 +1,601 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Entrenador de Kegels</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kegel Master</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966334.png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (para JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <!-- Manifest PWA -->
-  <link rel="manifest" href="data:application/manifest+json,{
-    &quot;name&quot;:&quot;Entrenador Kegels&quot;,
-    &quot;short_name&quot;:&quot;Kegels&quot;,
-    &quot;start_url&quot;:&quot;.&quot;,
-    &quot;display&quot;:&quot;standalone&quot;,
-    &quot;background_color&quot;:&quot;#020617&quot;,
-    &quot;theme_color&quot;:&quot;#22c55e&quot;,
-    &quot;icons&quot;:[{
-      &quot;src&quot;:&quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAFUlEQVR4Xu3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAvg0hAAE1zZxNAAAAAElFTkSuQmCC&quot;,
-      &quot;sizes&quot;:&quot;192x192&quot;,
-      &quot;type&quot;:&quot;image/png&quot;
-    }]
-  }">
+    <!-- Lucide Icons (Script global) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .card {
-      background: #020617;
-      padding: 24px;
-      border-radius: 16px;
-      width: 340px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.4);
-      text-align: center;
-    }
-    h1 { font-size: 20px; margin-bottom: 8px; }
-    button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 8px;
-      border: none;
-      font-size: 16px;
-      background: #22c55e;
-      color: #022c22;
-      cursor: pointer;
-    }
-    button.stop {
-      background: #ef4444;
-      color: #450a0a;
-    }
-    button.reset {
-      background: #6366f1;
-      color: #eef2ff;
-    }
-    .timer { font-size: 32px; margin: 12px 0; }
-    .state { font-size: 16px; margin-top: 6px; }
-    .progress { margin-top: 8px; font-size: 14px; color: #a5b4fc; }
-  </style>
+    <style>
+        /* Deshabilitar scroll elástico en iOS */
+        body {
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
 </head>
-<body>
-  <div class="card">
-    <h1>Rutina Kegel Guiada</h1>
+<body class="bg-slate-50 text-slate-900 select-none">
+    <div id="root"></div>
 
-    <div class="progress" id="weekInfo">Semana 1</div>
-    <div class="progress" id="sessionType">Sesión 1</div>
-    <div class="timer" id="timer">00</div>
-    <div class="state" id="state">Listo</div>
-    <div class="state" id="reps">Reps: 0 / 15</div>
-    <div class="progress" id="daily">Sesiones hoy: 0 / 3</div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
 
-    <button id="startBtn">Iniciar sesión</button>
-    <button id="stopBtn" class="stop" style="display:none">Detener</button>
-    <button id="resetBtn" class="reset">Reiniciar progreso</button>
-  </div>
+        // --- Icon Components (SVG Inlines para evitar dependencias complejas) ---
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const icons = {
+                Play: <path d="M5 3l14 9-14 9V3z" />,
+                Pause: <path d="M6 4h4v16H6zm8 0h4v16h-4z" />,
+                RotateCcw: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />,
+                History: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8 M3 8h6 M3 8v6 M12 7v5l4 2" />,
+                CheckCircle2: <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M9 12l2 2 4-4" />,
+                Trophy: <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6 M18 9h1.5a2.5 2.5 0 0 0 0-5H18 M4 22h16 M2 22h20 M8 22l1-9h6l1 9 M12 6l-4 4h8l-4-4z" />,
+                Volume2: <path d="M11 5L6 9H2v6h4l5 4V5z M19.07 4.93a10 10 0 0 1 0 14.14 M15.54 8.46a5 5 0 0 1 0 7.07" />,
+                VolumeX: <path d="M11 5L6 9H2v6h4l5 4V5z M23 9l-6 6 M17 9l6 6" />,
+                CalendarDays: <path d="M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />,
+                Clock: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>,
+                ChevronRight: <path d="M9 18l6-6-6-6" />,
+                Trash2: <path d="M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M10 11v6 M14 11v6" />,
+                AlertTriangle: <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" />,
+                X: <path d="M18 6L6 18 M6 6l12 12" />
+            };
+            return (
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width={size} 
+                    height={size} 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={className}
+                >
+                    {icons[name] || null}
+                </svg>
+            );
+        };
 
-<script>
-  let interval;
-  let isContract = true;
-  let seconds = 0;
-  let reps = 0;
+        // --- Datos del Programa ---
+        const PROGRAM_DATA = [
+          { week: 1, slowTime: 3, slowReps: 10, fastTime: 1, fastReps: 10, fastIsBurst: false },
+          { week: 2, slowTime: 3, slowReps: 15, fastTime: 1, fastReps: 15, fastIsBurst: false },
+          { week: 3, slowTime: 5, slowReps: 10, fastTime: 1, fastReps: 20, fastIsBurst: false },
+          { week: 4, slowTime: 5, slowReps: 15, burstSize: 10, fastReps: 3, fastIsBurst: true },
+          { week: 5, slowTime: 7, slowReps: 10, burstSize: 15, fastReps: 3, fastIsBurst: true },
+          { week: 6, slowTime: 7, slowReps: 15, burstSize: 15, fastReps: 4, fastIsBurst: true },
+          { week: 7, slowTime: 10, slowReps: 10, burstSize: 20, fastReps: 3, fastIsBurst: true },
+          { week: 8, slowTime: 10, slowReps: 15, burstSize: 20, fastReps: 4, fastIsBurst: true },
+        ];
 
-  const maxReps = 15;
-  const dailyGoal = 3;
-  const startDateKey = 'kegel-start-date';
+        function App() {
+            // --- Estados (LocalStorage reemplaza a Firebase) ---
+            const [history, setHistory] = useState(() => {
+                const saved = localStorage.getItem('kegel_history');
+                return saved ? JSON.parse(saved) : [];
+            });
+            
+            const [currentWeek, setCurrentWeek] = useState(() => {
+                const saved = localStorage.getItem('kegel_week');
+                return saved ? parseInt(saved) : 1;
+            });
 
-  const timerEl = document.getElementById('timer');
-  const stateEl = document.getElementById('state');
-  const repsEl = document.getElementById('reps');
-  const dailyEl = document.getElementById('daily');
-  const sessionTypeEl = document.getElementById('sessionType');
-  const weekInfoEl = document.getElementById('weekInfo');
-  const startBtn = document.getElementById('startBtn');
-  const stopBtn = document.getElementById('stopBtn');
-  const resetBtn = document.getElementById('resetBtn');
+            const [view, setView] = useState('dashboard');
+            const [isMuted, setIsMuted] = useState(false);
 
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  function beep(freq = 800, duration = 120) {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.frequency.value = freq;
-    osc.start();
-    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration / 1000);
-    osc.stop(audioCtx.currentTime + duration / 1000);
-  }
+            // Timer State
+            const [timerRunning, setTimerRunning] = useState(false);
+            const [phase, setPhase] = useState('ready'); 
+            const [subPhase, setSubPhase] = useState('contract'); 
+            const [currentRep, setCurrentRep] = useState(1);
+            const [timeLeft, setTimeLeft] = useState(0);
 
-  function vibrate(pattern = 100) {
-    if (navigator.vibrate) navigator.vibrate(pattern);
-  }
+            // Reset UI State
+            const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  function todayKey() {
-    const d = new Date();
-    return `kegel-${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-  }
+            const audioCtxRef = useRef(null);
 
-  function getDailySessions() {
-    return Number(localStorage.getItem(todayKey())) || 0;
-  }
+            // Persistencia automática
+            useEffect(() => {
+                localStorage.setItem('kegel_history', JSON.stringify(history));
+            }, [history]);
 
-  function addDailySession() {
-    localStorage.setItem(todayKey(), getDailySessions() + 1);
-    updateDailyUI();
-  }
+            useEffect(() => {
+                localStorage.setItem('kegel_week', currentWeek.toString());
+            }, [currentWeek]);
 
-  function getWeek() {
-    let start = localStorage.getItem(startDateKey);
-    if (!start) {
-      start = new Date().toISOString();
-      localStorage.setItem(startDateKey, start);
-    }
-    const diffDays = Math.floor((Date.now() - new Date(start)) / (1000 * 60 * 60 * 24));
-    if (diffDays < 7) return 1;
-    if (diffDays < 14) return 2;
-    return 3;
-  }
+            // --- Lógica de Audio (Web Audio API - Volumen Alto) ---
+            const playNotification = (type) => {
+                if (isMuted) return;
 
-  function getSessionConfig(done, week) {
-    if (week >= 2 && done === 0) {
-      return { label: 'Sesión 1: Fuerza (5s)', duration: 5 };
-    }
-    if (done === 0) return { label: 'Sesión 1: Base (3s)', duration: 3 };
-    if (done === 1) return { label: 'Sesión 2: Base (3s)', duration: 3 };
-    if (done === 2) return { label: 'Sesión 3: Pulsos (1s)', duration: 1 };
-    return null;
-  }
+                try {
+                    if (!audioCtxRef.current) {
+                        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                    }
 
-  function updateDailyUI() {
-    const done = getDailySessions();
-    const week = getWeek();
-    weekInfoEl.textContent = `Semana ${week}`;
-    dailyEl.textContent = `Sesiones hoy: ${done} / ${dailyGoal}`;
-    const cfg = getSessionConfig(done, week);
-    sessionTypeEl.textContent = cfg ? cfg.label : 'Rutina diaria completada 🎉';
-  }
+                    const ctx = audioCtxRef.current;
+                    if (ctx.state === 'suspended') {
+                        ctx.resume();
+                    }
 
-  updateDailyUI();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
 
-  startBtn.onclick = () => {
-    const done = getDailySessions();
-    if (done >= dailyGoal) return;
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
 
-    const week = getWeek();
-    const cfg = getSessionConfig(done, week);
+                    // Frecuencias: 880Hz (Contrae), 440Hz (Relaja)
+                    const freq = type === 'contract' ? 880 : 440;
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                    osc.type = 'sine';
 
-    clearInterval(interval);
-    seconds = cfg.duration;
-    reps = 0;
-    isContract = true;
+                    // VOLUMEN ALTO Y PERCUSIVO
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.9, ctx.currentTime + 0.02); // Ataque rápido y fuerte
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4); // Caída natural
 
-    stateEl.textContent = 'Aprieta';
-    timerEl.textContent = seconds;
-    repsEl.textContent = `Reps: ${reps} / ${maxReps}`;
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.4);
+                } catch (e) {
+                    console.error("Audio error", e);
+                }
+            };
 
-    beep(1000);
-    vibrate(120);
+            // --- Lógica del Cronómetro ---
+            useEffect(() => {
+                let interval = null;
+                if (timerRunning && timeLeft > 0) {
+                    interval = setInterval(() => {
+                        setTimeLeft(t => t - 1);
+                    }, 1000);
+                } else if (timerRunning && timeLeft === 0) {
+                    handlePhaseTransition();
+                }
+                return () => clearInterval(interval);
+            }, [timerRunning, timeLeft, phase, subPhase, currentRep]);
 
-    startBtn.style.display = 'none';
-    stopBtn.style.display = 'block';
+            // --- Helpers ---
+            const getTodaySessions = () => {
+                const todayStr = new Date().toDateString();
+                return history.filter(h => {
+                    const date = new Date(h.timestamp);
+                    return date.toDateString() === todayStr;
+                }).length;
+            };
 
-    interval = setInterval(() => {
-      seconds--;
-      timerEl.textContent = seconds;
+            const getWeekDay = () => {
+                const days = new Set(history
+                  .filter(h => h.week === currentWeek)
+                  .map(h => new Date(h.timestamp).toDateString())
+                );
+                return Math.min(days.size + 1, 7);
+            };
 
-      if (seconds === 0) {
-        beep(isContract ? 800 : 500);
-        vibrate(isContract ? 80 : 120);
+            // --- Acciones ---
+            const startNewSessionAction = () => {
+                resetTimer(); 
+                setView('timer');
+            };
 
-        if (!isContract) {
-          reps++;
-          repsEl.textContent = `Reps: ${reps} / ${maxReps}`;
-          if (reps >= maxReps) {
-            clearInterval(interval);
-            stateEl.textContent = 'Sesión completada ✔';
-            timerEl.textContent = '00';
-            startBtn.style.display = 'block';
-            stopBtn.style.display = 'none';
-            addDailySession();
-            return;
-          }
+            const resetAllProgress = () => {
+                setHistory([]);
+                setCurrentWeek(1);
+                setShowResetConfirm(false);
+                // Forzar limpieza local
+                localStorage.removeItem('kegel_history');
+                localStorage.setItem('kegel_week', '1');
+            };
+
+            const startExercise = () => {
+                const data = PROGRAM_DATA[currentWeek - 1];
+                setPhase('slow');
+                setSubPhase('contract');
+                setCurrentRep(1);
+                setTimeLeft(data.slowTime);
+                setTimerRunning(true);
+                playNotification('contract');
+            };
+
+            const handlePhaseTransition = () => {
+                const data = PROGRAM_DATA[currentWeek - 1];
+
+                if (phase === 'slow') {
+                    if (subPhase === 'contract') {
+                        setSubPhase('relax');
+                        setTimeLeft(data.slowTime);
+                        playNotification('relax');
+                    } else {
+                        if (currentRep < data.slowReps) {
+                            setCurrentRep(c => c + 1);
+                            setSubPhase('contract');
+                            setTimeLeft(data.slowTime);
+                            playNotification('contract');
+                        } else {
+                            setPhase('fast');
+                            setCurrentRep(1);
+                            setSubPhase('contract');
+                            if (data.fastIsBurst) {
+                                startBurst(data.burstSize, data.fastReps);
+                            } else {
+                                setTimeLeft(data.fastTime);
+                                playNotification('contract');
+                            }
+                        }
+                    }
+                } else if (phase === 'fast' && !data.fastIsBurst) {
+                    if (subPhase === 'contract') {
+                        setSubPhase('relax');
+                        setTimeLeft(data.fastTime);
+                        playNotification('relax');
+                    } else {
+                        if (currentRep < data.fastReps) {
+                            setCurrentRep(c => c + 1);
+                            setSubPhase('contract');
+                            setTimeLeft(data.fastTime);
+                            playNotification('contract');
+                        } else {
+                            finishWorkout();
+                        }
+                    }
+                }
+            };
+
+            const startBurst = async (size, totalBursts) => {
+                setTimerRunning(false);
+                for (let b = 1; b <= totalBursts; b++) {
+                    setSubPhase(`Ráfaga ${b}/${totalBursts}`);
+                    playNotification('contract');
+                    for (let i = 1; i <= size; i++) {
+                        setCurrentRep(i);
+                        await new Promise(r => setTimeout(r, 600)); 
+                    }
+                    if (b < totalBursts) {
+                        playNotification('relax');
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+                }
+                finishWorkout();
+            };
+
+            const finishWorkout = () => {
+                setTimerRunning(false);
+                setPhase('complete');
+                playNotification('relax');
+                
+                // Guardar en historial local
+                const newEntry = {
+                    id: Date.now(),
+                    week: currentWeek,
+                    timestamp: new Date().toISOString(),
+                    type: 'session_complete'
+                };
+                setHistory(prev => [...prev, newEntry]);
+            };
+
+            const resetTimer = () => {
+                setTimerRunning(false);
+                setPhase('ready');
+                setSubPhase('contract');
+                setCurrentRep(1);
+                setTimeLeft(0);
+            };
+
+            // --- Vistas ---
+
+            const Dashboard = () => {
+                const sessionsDone = getTodaySessions();
+                const dayOfProgram = getWeekDay();
+
+                return (
+                    <div className="flex flex-col gap-5 pb-10 max-w-md mx-auto p-4 pt-8">
+                         {/* Header Simple */}
+                        <div className="flex justify-between items-center mb-2">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                                    <div className="w-2 h-4 bg-white rounded-full" />
+                                </div>
+                                <h1 className="text-xl font-black tracking-tight uppercase italic text-slate-800">Kegel Master</h1>
+                            </div>
+                            <button 
+                                onClick={() => setIsMuted(!isMuted)}
+                                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-200 text-slate-500' : 'bg-white text-indigo-600 shadow-sm border border-slate-100'}`}
+                            >
+                                <Icon name={isMuted ? "VolumeX" : "Volume2"} size={20} />
+                            </button>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-black tracking-tight flex items-center gap-2 text-slate-800">
+                                        <Icon name="CalendarDays" className="text-indigo-600" size={24} /> Semana {currentWeek}
+                                    </h2>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Día {dayOfProgram} de 7</p>
+                                </div>
+                                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-black">
+                                    {Math.round((dayOfProgram / 7) * 100)}%
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-end">
+                                    <span className="text-sm font-black text-slate-700">SITUACIÓN HOY</span>
+                                    <span className="text-xs font-bold text-indigo-600">{sessionsDone}/3 SESIONES</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="relative">
+                                            <div className={`h-3 rounded-full transition-all duration-700 ${i <= sessionsDone ? 'bg-green-500 shadow-lg shadow-green-200' : 'bg-slate-100'}`} />
+                                            {i <= sessionsDone && <div className="absolute -top-1 -right-1 text-green-600 bg-white rounded-full"><Icon name="CheckCircle2" size={12} /></div>}
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-medium italic text-center">
+                                    {sessionsDone === 0 ? "Aún no has empezado hoy." : 
+                                    sessionsDone < 3 ? `Te faltan ${3 - sessionsDone} sesiones para la meta del día.` : 
+                                    "¡Meta diaria cumplida! Mañana continuará tu progreso."}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4">
+                            <button 
+                                onClick={startNewSessionAction}
+                                className="group bg-slate-900 p-6 rounded-3xl flex items-center justify-between transition-all active:scale-[0.98] shadow-lg shadow-slate-300"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white">
+                                        <Icon name="Play" fill="currentColor" size={24} />
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="block font-black text-white uppercase tracking-tight">
+                                            {sessionsDone >= 3 ? "Entrenamiento Extra" : `Iniciar Sesión ${sessionsDone + 1}`}
+                                        </span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Presiona para comenzar rutina</span>
+                                    </div>
+                                </div>
+                                <div className="text-slate-600 group-hover:translate-x-1 transition-transform">
+                                    <Icon name="ChevronRight" />
+                                </div>
+                            </button>
+
+                            <button 
+                                onClick={() => setView('history')}
+                                className="bg-white p-5 rounded-3xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm active:scale-95 transition-all"
+                            >
+                                <Icon name="History" className="text-slate-400" size={24} />
+                                <span className="text-xs font-black uppercase text-slate-700">Historial & Reinicio</span>
+                            </button>
+                        </div>
+
+                        <div className="bg-slate-100 p-5 rounded-3xl border border-slate-200">
+                            <h3 className="font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] mb-4">Nivel del Programa</h3>
+                            <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar">
+                                {PROGRAM_DATA.map((d) => (
+                                    <button
+                                        key={d.week}
+                                        onClick={() => setCurrentWeek(d.week)}
+                                        className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all ${
+                                            currentWeek === d.week 
+                                            ? 'bg-indigo-600 border-indigo-600 text-white font-black shadow-md' 
+                                            : 'bg-white border-slate-200 text-slate-400 font-bold'
+                                        }`}
+                                    >
+                                        {d.week}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const WorkoutTimer = () => {
+                const data = PROGRAM_DATA[currentWeek - 1];
+                const totalReps = phase === 'slow' ? data.slowReps : data.fastReps;
+                
+                return (
+                    <div className="flex flex-col items-center justify-between py-6 h-screen max-w-md mx-auto p-4 bg-slate-50">
+                        <div className="text-center mt-4">
+                            <div className="flex items-center justify-center gap-2 mb-1">
+                                <Icon name="Trophy" size={16} className="text-yellow-500" />
+                                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Semana {currentWeek}</span>
+                            </div>
+                            <h2 className="text-3xl font-black text-slate-900 uppercase">
+                                {phase === 'slow' ? 'Lentos' : phase === 'fast' ? 'Rápidos' : 'En Posición'}
+                            </h2>
+                        </div>
+
+                        <div className="relative w-72 h-72 flex items-center justify-center">
+                            <svg className="absolute inset-0 w-full h-full -rotate-90">
+                                <circle cx="144" cy="144" r="130" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-200" />
+                                {timerRunning && (
+                                    <circle
+                                        cx="144" cy="144" r="130" stroke="currentColor" strokeWidth="12" fill="transparent"
+                                        strokeDasharray={816}
+                                        strokeDashoffset={816 * (1 - timeLeft / (phase === 'slow' ? data.slowTime : data.fastTime))}
+                                        strokeLinecap="round"
+                                        className="text-indigo-600 transition-all duration-1000 linear"
+                                    />
+                                )}
+                            </svg>
+                            
+                            <div className="text-center z-10">
+                                {phase === 'ready' ? (
+                                    <button 
+                                        onClick={startExercise}
+                                        className="w-44 h-44 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-2xl shadow-indigo-300 hover:scale-105 transition-all"
+                                    >
+                                        <Icon name="Play" fill="currentColor" size={56} />
+                                    </button>
+                                ) : phase === 'complete' ? (
+                                    <div className="flex flex-col items-center animate-bounce">
+                                        <div className="text-green-500 mb-2"><Icon name="CheckCircle2" size={72} /></div>
+                                        <span className="font-black text-2xl">¡LOGRADO!</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center">
+                                        <span className={`text-7xl font-black mb-2 tabular-nums transition-all ${subPhase === 'contract' ? 'text-indigo-600 scale-110' : 'text-slate-300'}`}>
+                                            {timeLeft > 0 ? timeLeft : (subPhase.startsWith('Ráfaga') ? currentRep : '')}
+                                        </span>
+                                        <div className="bg-slate-100 px-4 py-1 rounded-full mt-2">
+                                            <span className="text-slate-500 font-black uppercase tracking-widest text-[10px]">
+                                                {subPhase === 'contract' ? 'CONTRAE' : subPhase === 'relax' ? 'RELAJA' : 'BOMBEO'} • {currentRep} / {totalReps}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-6 mb-8">
+                            {phase !== 'ready' && phase !== 'complete' && (
+                                <>
+                                    <button onClick={() => setTimerRunning(!timerRunning)} className="w-16 h-16 rounded-3xl bg-white border-2 border-slate-100 flex items-center justify-center text-slate-800 shadow-sm active:scale-95 transition-all">
+                                        {timerRunning ? <Icon name="Pause" fill="currentColor" size={28} /> : <Icon name="Play" fill="currentColor" size={28} />}
+                                    </button>
+                                    <button onClick={resetTimer} className="w-16 h-16 rounded-3xl bg-white border-2 border-slate-100 flex items-center justify-center text-slate-400 active:scale-95 transition-all">
+                                        <Icon name="RotateCcw" size={24} />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+
+                        {phase === 'complete' && (
+                            <button 
+                                onClick={() => setView('dashboard')}
+                                className="w-full max-w-xs py-5 bg-indigo-600 text-white rounded-3xl font-black shadow-xl uppercase tracking-widest text-sm active:scale-95 transition-all mb-8"
+                            >
+                                Volver al Panel
+                            </button>
+                        )}
+                        
+                        {phase === 'ready' && (
+                             <button onClick={() => setView('dashboard')} className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-8">Cancelar</button>
+                        )}
+                    </div>
+                );
+            };
+
+            const HistoryList = () => {
+                const sorted = [...history].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                return (
+                    <div className="flex flex-col h-screen max-w-md mx-auto p-4 bg-slate-50">
+                        <div className="flex justify-between items-center mb-6 mt-4">
+                            <h2 className="text-2xl font-black text-slate-800">Actividad</h2>
+                            {history.length > 0 && (
+                                <button 
+                                    onClick={() => setShowResetConfirm(true)}
+                                    className="flex items-center gap-1.5 text-red-500 font-black text-[10px] uppercase tracking-widest hover:opacity-70 transition-opacity bg-red-50 px-3 py-1.5 rounded-full"
+                                >
+                                    <Icon name="Trash2" size={14} /> Reiniciar
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-4">
+                            {history.length === 0 ? (
+                                <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
+                                    <div className="text-slate-200 mb-4 flex justify-center"><Icon name="History" size={48} /></div>
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Aún no hay registros</p>
+                                </div>
+                            ) : (
+                                sorted.map((item, idx) => (
+                                    <div key={idx} className="bg-white p-5 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-500">
+                                                <Icon name="Clock" size={22} />
+                                            </div>
+                                            <div>
+                                                <div className="font-black text-sm uppercase tracking-tight text-slate-800">Sesión Completada</div>
+                                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Semana {item.week}</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-xs font-black text-slate-700">
+                                                {new Date(item.timestamp).toLocaleDateString()}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase">
+                                                {new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <button onClick={() => setView('dashboard')} className="w-full mt-4 py-5 border-2 border-slate-200 rounded-3xl font-black text-slate-400 uppercase tracking-[0.2em] text-xs active:scale-95 transition-all">Cerrar Historial</button>
+                    </div>
+                );
+            };
+
+            const ResetModal = () => (
+                 <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-300">
+                        <div className="flex justify-center mb-6">
+                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                                <Icon name="AlertTriangle" size={32} />
+                            </div>
+                        </div>
+                        <h3 className="text-center font-black text-xl mb-2 text-slate-800">¿Reiniciar todo?</h3>
+                        <p className="text-center text-slate-500 text-sm mb-8 leading-relaxed">Se borrará permanentemente todo tu historial y volverás a la Semana 1.</p>
+                        
+                        <div className="space-y-3">
+                            <button 
+                                onClick={resetAllProgress}
+                                className="w-full py-4 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-red-200 flex items-center justify-center gap-2 active:scale-95 transition-all"
+                            >
+                                <Icon name="Trash2" size={16} />
+                                Confirmar Borrado
+                            </button>
+                            <button 
+                                onClick={() => setShowResetConfirm(false)}
+                                className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+                            >
+                                <Icon name="X" size={16} />
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen font-sans selection:bg-indigo-100">
+                    {view === 'dashboard' && <Dashboard />}
+                    {view === 'timer' && <WorkoutTimer />}
+                    {view === 'history' && <HistoryList />}
+                    {showResetConfirm && <ResetModal />}
+                </div>
+            );
         }
 
-        isContract = !isContract;
-        stateEl.textContent = isContract ? 'Aprieta' : 'Relaja';
-        seconds = cfg.duration;
-      }
-    }, 1000);
-  };
-
-  stopBtn.onclick = () => {
-    clearInterval(interval);
-    stateEl.textContent = 'Listo';
-    timerEl.textContent = '00';
-    startBtn.style.display = 'block';
-    stopBtn.style.display = 'none';
-  };
-
-  resetBtn.onclick = () => {
-    localStorage.clear();
-    location.reload();
-  };
-</script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
