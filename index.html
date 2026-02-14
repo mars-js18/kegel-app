@@ -11,21 +11,44 @@
     <meta name="theme-color" content="#4f46e5">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2966/2966334.png">
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS con Configuración de Modo Oscuro -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#1e293b',
+                            950: '#020617',
+                        }
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel (para JSX) -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Lucide Icons (Script global) -->
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
-        /* Deshabilitar scroll elástico en iOS */
         body {
             overscroll-behavior-y: none;
             -webkit-tap-highlight-color: transparent;
@@ -37,15 +60,22 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.2); opacity: 0; }
+        }
+        .animate-pulse-ring {
+            animation: pulse-ring 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 select-none">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
-        // --- Icon Components (SVG Inlines para evitar dependencias complejas) ---
+        // --- Icon Components ---
         const Icon = ({ name, size = 24, className = "" }) => {
             const icons = {
                 Play: <path d="M5 3l14 9-14 9V3z" />,
@@ -61,7 +91,12 @@
                 ChevronRight: <path d="M9 18l6-6-6-6" />,
                 Trash2: <path d="M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2 M10 11v6 M14 11v6" />,
                 AlertTriangle: <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" />,
-                X: <path d="M18 6L6 18 M6 6l12 12" />
+                X: <path d="M18 6L6 18 M6 6l12 12" />,
+                Zap: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />,
+                Activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+                Sun: <><circle cx="12" cy="12" r="5" /><path d="M12 1v2 M12 21v2 M4.22 4.22l1.42 1.42 M18.36 18.36l1.42 1.42 M1 12h2 M21 12h2 M4.22 19.78l1.42-1.42 M18.36 5.64l1.42-1.42" /></>,
+                Moon: <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />,
+                Info: <><circle cx="12" cy="12" r="10" /><path d="M12 16v-4 M12 8h.01" /></>
             };
             return (
                 <svg 
@@ -76,34 +111,96 @@
                     strokeLinejoin="round" 
                     className={className}
                 >
-                    {icons[name] || null}
+                    {icons[name] || <circle cx="12" cy="12" r="10" />}
                 </svg>
             );
         };
 
-        // --- Datos del Programa ---
-        const PROGRAM_DATA = [
-          { week: 1, slowTime: 3, slowReps: 10, fastTime: 1, fastReps: 10, fastIsBurst: false },
-          { week: 2, slowTime: 3, slowReps: 15, fastTime: 1, fastReps: 15, fastIsBurst: false },
-          { week: 3, slowTime: 5, slowReps: 10, fastTime: 1, fastReps: 20, fastIsBurst: false },
-          { week: 4, slowTime: 5, slowReps: 15, burstSize: 10, fastReps: 3, fastIsBurst: true },
-          { week: 5, slowTime: 7, slowReps: 10, burstSize: 15, fastReps: 3, fastIsBurst: true },
-          { week: 6, slowTime: 7, slowReps: 15, burstSize: 15, fastReps: 4, fastIsBurst: true },
-          { week: 7, slowTime: 10, slowReps: 10, burstSize: 20, fastReps: 3, fastIsBurst: true },
-          { week: 8, slowTime: 10, slowReps: 15, burstSize: 20, fastReps: 4, fastIsBurst: true },
-        ];
+        // --- Tips de Forma ---
+        const FORM_TIPS = {
+            contract: [
+                "No aguantes la respiración, sigue respirando.",
+                "Asegúrate de no apretar los glúteos.",
+                "Mantén los muslos relajados, aísla la zona.",
+                "Imagina que detienes el flujo de orina.",
+                "Siente cómo se elevan los testículos levemente.",
+                "No tenses el abdomen, focaliza abajo.",
+                "Evita apretar la mandíbula o los hombros."
+            ],
+            relax: [
+                "Suelta todo el aire y relaja.",
+                "Siente cómo el músculo desciende completamente.",
+                "Relaja la mandíbula para liberar tensión pélvica.",
+                "Deja caer el suelo pélvico como una hamaca.",
+                "Inhala profundo hacia el abdomen bajo.",
+                "Asegúrate de no dejar tensión residual."
+            ],
+            hold: [
+                "Respira suavemente, no bloquees el aire.",
+                "Solo usa el 50% de tu fuerza máxima.",
+                "Mantén la concentración en la sensación.",
+                "Si tiemblas, reduce un poco la fuerza.",
+                "Mantén la postura estable y relajada."
+            ]
+        };
+
+        // --- Configuración de Rutinas Dinámicas ---
+        const getRoutineForWeek = (week) => {
+            if (week <= 4) {
+                return {
+                    title: week === 1 ? "Introducción" : "Fase 1: Tónica y Reactividad",
+                    description: "Acondicionamiento base. Postura: Acostado.",
+                    steps: [
+                        { type: 'reps', name: 'Kegels Lentos', work: 5, rest: 5, count: 10, instruction: 'Contrae 5s, Relaja 5s' },
+                        { type: 'rest', name: 'Pausa de Recuperación', duration: 60, instruction: 'Relaja abdomen totalmente' },
+                        { type: 'reps', name: 'Kegels Rápidos', work: 1, rest: 1, count: 10, instruction: 'Ráfaga explosiva' }
+                    ]
+                };
+            }
+            if (week <= 8) {
+                return {
+                    title: "Fase 2: Hipertrofia Funcional",
+                    description: "Postura: Mañana (Sentado), Tarde (Pie), Noche (Acostado).",
+                    steps: [
+                        { type: 'reps', name: 'Lentos Prolongados', work: 10, rest: 10, count: 10, instruction: 'Contrae 10s, Relaja 10s' },
+                        { type: 'hold', name: 'El Maratón', duration: 30, instruction: 'Sostén al 50% de fuerza constante' },
+                        { type: 'rest', name: 'Breve Pausa', duration: 10, instruction: 'Prepárate para ráfagas' },
+                        { type: 'reps', name: 'Kegels Rápidos', work: 1, rest: 1, count: 10, instruction: 'Ráfaga explosiva' }
+                    ]
+                };
+            }
+            return {
+                title: "Fase 3: Integración",
+                description: "Consulta la guía para integración sexual.",
+                steps: [] 
+            };
+        };
 
         function App() {
-            // --- Estados (LocalStorage reemplaza a Firebase) ---
+            // --- Estado Persistente ---
             const [history, setHistory] = useState(() => {
                 const saved = localStorage.getItem('kegel_history');
                 return saved ? JSON.parse(saved) : [];
             });
-            
-            const [currentWeek, setCurrentWeek] = useState(() => {
-                const saved = localStorage.getItem('kegel_week');
-                return saved ? parseInt(saved) : 1;
+
+            // --- Modo Oscuro ---
+            const [darkMode, setDarkMode] = useState(() => {
+                const saved = localStorage.getItem('kegel_dark_mode');
+                return saved ? JSON.parse(saved) : false;
             });
+
+            useEffect(() => {
+                localStorage.setItem('kegel_dark_mode', JSON.stringify(darkMode));
+            }, [darkMode]);
+
+            // --- Progreso ---
+            const sessionsPerDay = 3;
+            const daysPerWeek = 7;
+            const sessionsPerWeek = sessionsPerDay * daysPerWeek;
+            const totalSessions = history.length;
+            const currentWeek = Math.floor(totalSessions / sessionsPerWeek) + 1;
+            const currentDay = Math.floor((totalSessions % sessionsPerWeek) / sessionsPerDay) + 1;
+            const sessionsToday = totalSessions % sessionsPerDay;
 
             const [view, setView] = useState('dashboard');
             const [isMuted, setIsMuted] = useState(false);
@@ -111,62 +208,64 @@
             // Timer State
             const [timerRunning, setTimerRunning] = useState(false);
             const [phase, setPhase] = useState('ready'); 
-            const [subPhase, setSubPhase] = useState('contract'); 
+            const [stepIndex, setStepIndex] = useState(0); 
+            const [subPhase, setSubPhase] = useState('work'); 
             const [currentRep, setCurrentRep] = useState(1);
             const [timeLeft, setTimeLeft] = useState(0);
 
             // Reset UI State
             const [showResetConfirm, setShowResetConfirm] = useState(false);
+            const [showPhase3Modal, setShowPhase3Modal] = useState(false);
 
             const audioCtxRef = useRef(null);
 
-            // Persistencia automática
             useEffect(() => {
                 localStorage.setItem('kegel_history', JSON.stringify(history));
-            }, [history]);
+                if (totalSessions >= 8 * sessionsPerWeek && view === 'dashboard') {
+                    setShowPhase3Modal(true);
+                }
+            }, [history, totalSessions, view]);
 
-            useEffect(() => {
-                localStorage.setItem('kegel_week', currentWeek.toString());
-            }, [currentWeek]);
+            // --- Audio & Vibrate ---
+            const triggerFeedback = (type) => {
+                if (navigator.vibrate) {
+                    if (type === 'contract' || type === 'hold') navigator.vibrate(200);
+                    else if (type === 'relax' || type === 'rest') navigator.vibrate([50, 50, 50]);
+                    else if (type === 'complete') navigator.vibrate([100, 50, 100, 50, 200]);
+                }
+                if (!isMuted) playAudioTone(type);
+            };
 
-            // --- Lógica de Audio (Web Audio API - Volumen Alto) ---
-            const playNotification = (type) => {
-                if (isMuted) return;
-
+            const playAudioTone = (type) => {
                 try {
-                    if (!audioCtxRef.current) {
-                        audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-                    }
-
+                    if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
                     const ctx = audioCtxRef.current;
-                    if (ctx.state === 'suspended') {
-                        ctx.resume();
-                    }
+                    if (ctx.state === 'suspended') ctx.resume();
 
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
-
                     osc.connect(gain);
                     gain.connect(ctx.destination);
 
-                    // Frecuencias: 880Hz (Contrae), 440Hz (Relaja)
-                    const freq = type === 'contract' ? 880 : 440;
+                    let freq = 440;
+                    if (type === 'contract') freq = 800; 
+                    if (type === 'hold') freq = 600; 
+                    if (type === 'relax' || type === 'rest') freq = 300; 
+                    if (type === 'complete') freq = 1000;
+
                     osc.frequency.setValueAtTime(freq, ctx.currentTime);
                     osc.type = 'sine';
 
-                    // VOLUMEN ALTO Y PERCUSIVO
                     gain.gain.setValueAtTime(0, ctx.currentTime);
-                    gain.gain.linearRampToValueAtTime(0.9, ctx.currentTime + 0.02); // Ataque rápido y fuerte
-                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4); // Caída natural
+                    gain.gain.linearRampToValueAtTime(0.8, ctx.currentTime + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (type === 'hold' ? 0.8 : 0.4));
 
                     osc.start(ctx.currentTime);
-                    osc.stop(ctx.currentTime + 0.4);
-                } catch (e) {
-                    console.error("Audio error", e);
-                }
+                    osc.stop(ctx.currentTime + (type === 'hold' ? 0.8 : 0.4));
+                } catch (e) { console.error(e); }
             };
 
-            // --- Lógica del Cronómetro ---
+            // --- Timer Logic ---
             useEffect(() => {
                 let interval = null;
                 if (timerRunning && timeLeft > 0) {
@@ -174,344 +273,326 @@
                         setTimeLeft(t => t - 1);
                     }, 1000);
                 } else if (timerRunning && timeLeft === 0) {
-                    handlePhaseTransition();
+                    advanceRoutine();
                 }
                 return () => clearInterval(interval);
-            }, [timerRunning, timeLeft, phase, subPhase, currentRep]);
+            }, [timerRunning, timeLeft]);
 
-            // --- Helpers ---
-            const getTodaySessions = () => {
-                const todayStr = new Date().toDateString();
-                return history.filter(h => {
-                    const date = new Date(h.timestamp);
-                    return date.toDateString() === todayStr;
-                }).length;
-            };
+            const startRoutine = () => {
+                const routine = getRoutineForWeek(currentWeek);
+                if (routine.steps.length === 0) return;
 
-            const getWeekDay = () => {
-                const days = new Set(history
-                  .filter(h => h.week === currentWeek)
-                  .map(h => new Date(h.timestamp).toDateString())
-                );
-                return Math.min(days.size + 1, 7);
-            };
-
-            // --- Acciones ---
-            const startNewSessionAction = () => {
-                resetTimer(); 
-                setView('timer');
-            };
-
-            const resetAllProgress = () => {
-                setHistory([]);
-                setCurrentWeek(1);
-                setShowResetConfirm(false);
-                // Forzar limpieza local
-                localStorage.removeItem('kegel_history');
-                localStorage.setItem('kegel_week', '1');
-            };
-
-            const startExercise = () => {
-                const data = PROGRAM_DATA[currentWeek - 1];
-                setPhase('slow');
-                setSubPhase('contract');
-                setCurrentRep(1);
-                setTimeLeft(data.slowTime);
+                setPhase('active'); 
+                setStepIndex(0);
+                const firstStep = routine.steps[0];
+                setupStep(firstStep, 0);
                 setTimerRunning(true);
-                playNotification('contract');
             };
 
-            const handlePhaseTransition = () => {
-                const data = PROGRAM_DATA[currentWeek - 1];
-
-                if (phase === 'slow') {
-                    if (subPhase === 'contract') {
-                        setSubPhase('relax');
-                        setTimeLeft(data.slowTime);
-                        playNotification('relax');
-                    } else {
-                        if (currentRep < data.slowReps) {
-                            setCurrentRep(c => c + 1);
-                            setSubPhase('contract');
-                            setTimeLeft(data.slowTime);
-                            playNotification('contract');
-                        } else {
-                            setPhase('fast');
-                            setCurrentRep(1);
-                            setSubPhase('contract');
-                            if (data.fastIsBurst) {
-                                startBurst(data.burstSize, data.fastReps);
-                            } else {
-                                setTimeLeft(data.fastTime);
-                                playNotification('contract');
-                            }
-                        }
-                    }
-                } else if (phase === 'fast' && !data.fastIsBurst) {
-                    if (subPhase === 'contract') {
-                        setSubPhase('relax');
-                        setTimeLeft(data.fastTime);
-                        playNotification('relax');
-                    } else {
-                        if (currentRep < data.fastReps) {
-                            setCurrentRep(c => c + 1);
-                            setSubPhase('contract');
-                            setTimeLeft(data.fastTime);
-                            playNotification('contract');
-                        } else {
-                            finishWorkout();
-                        }
-                    }
+            const setupStep = (step, index) => {
+                if (step.type === 'reps') {
+                    setSubPhase('work');
+                    setCurrentRep(1);
+                    setTimeLeft(step.work);
+                    triggerFeedback('contract');
+                } else if (step.type === 'rest') {
+                    setSubPhase('rest');
+                    setTimeLeft(step.duration);
+                    triggerFeedback('relax');
+                } else if (step.type === 'hold') {
+                    setSubPhase('hold');
+                    setTimeLeft(step.duration);
+                    triggerFeedback('hold');
                 }
             };
 
-            const startBurst = async (size, totalBursts) => {
-                setTimerRunning(false);
-                for (let b = 1; b <= totalBursts; b++) {
-                    setSubPhase(`Ráfaga ${b}/${totalBursts}`);
-                    playNotification('contract');
-                    for (let i = 1; i <= size; i++) {
-                        setCurrentRep(i);
-                        await new Promise(r => setTimeout(r, 600)); 
+            const advanceRoutine = () => {
+                const routine = getRoutineForWeek(currentWeek);
+                const currentStep = routine.steps[stepIndex];
+
+                if (currentStep.type === 'reps') {
+                    if (subPhase === 'work') {
+                        setSubPhase('rest');
+                        setTimeLeft(currentStep.rest);
+                        triggerFeedback('relax');
+                    } else {
+                        if (currentRep < currentStep.count) {
+                            setCurrentRep(r => r + 1);
+                            setSubPhase('work');
+                            setTimeLeft(currentStep.work);
+                            triggerFeedback('contract');
+                        } else {
+                            nextStep(routine);
+                        }
                     }
-                    if (b < totalBursts) {
-                        playNotification('relax');
-                        await new Promise(r => setTimeout(r, 2000));
-                    }
+                } else {
+                    nextStep(routine);
                 }
-                finishWorkout();
+            };
+
+            const nextStep = (routine) => {
+                const nextIndex = stepIndex + 1;
+                if (nextIndex < routine.steps.length) {
+                    setStepIndex(nextIndex);
+                    setupStep(routine.steps[nextIndex], nextIndex);
+                } else {
+                    finishWorkout();
+                }
             };
 
             const finishWorkout = () => {
                 setTimerRunning(false);
-                setPhase('complete');
-                playNotification('relax');
-                
-                // Guardar en historial local
+                triggerFeedback('complete');
                 const newEntry = {
                     id: Date.now(),
                     week: currentWeek,
+                    day: currentDay,
                     timestamp: new Date().toISOString(),
                     type: 'session_complete'
                 };
                 setHistory(prev => [...prev, newEntry]);
+                setPhase('complete');
             };
 
             const resetTimer = () => {
                 setTimerRunning(false);
-                setPhase('ready');
-                setSubPhase('contract');
-                setCurrentRep(1);
+                setStepIndex(0);
                 setTimeLeft(0);
+                setPhase('ready');
             };
 
-            // --- Vistas ---
+            const resetAllProgress = () => {
+                setHistory([]);
+                setShowResetConfirm(false);
+                localStorage.removeItem('kegel_history');
+            };
 
-            const Dashboard = () => {
-                const sessionsDone = getTodaySessions();
-                const dayOfProgram = getWeekDay();
+            // --- Helper para obtener Tips ---
+            const getCurrentTip = (currentSubPhase, rep) => {
+                let key = 'contract';
+                if (currentSubPhase === 'rest' || currentSubPhase === 'relax') key = 'relax';
+                if (currentSubPhase === 'hold') key = 'hold';
+                
+                const tips = FORM_TIPS[key];
+                return tips[(rep - 1) % tips.length] || tips[0];
+            };
+
+            // --- Renders (Funciones de renderizado en lugar de Componentes anidados) ---
+
+            const renderDashboard = () => {
+                const routine = getRoutineForWeek(currentWeek);
+                const isPhase3 = currentWeek > 8;
 
                 return (
                     <div className="flex flex-col gap-5 pb-10 max-w-md mx-auto p-4 pt-8">
-                         {/* Header Simple */}
                         <div className="flex justify-between items-center mb-2">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                                <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none">
                                     <div className="w-2 h-4 bg-white rounded-full" />
                                 </div>
-                                <h1 className="text-xl font-black tracking-tight uppercase italic text-slate-800">Kegel Master</h1>
+                                <h1 className="text-xl font-black tracking-tight uppercase italic text-slate-800 dark:text-white">Kegel Master</h1>
                             </div>
-                            <button 
-                                onClick={() => setIsMuted(!isMuted)}
-                                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-200 text-slate-500' : 'bg-white text-indigo-600 shadow-sm border border-slate-100'}`}
-                            >
-                                <Icon name={isMuted ? "VolumeX" : "Volume2"} size={20} />
-                            </button>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setDarkMode(!darkMode)}
+                                    className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-100 dark:border-slate-700"
+                                >
+                                    <Icon name={darkMode ? "Sun" : "Moon"} size={20} />
+                                </button>
+                                <button 
+                                    onClick={() => setIsMuted(!isMuted)}
+                                    className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isMuted ? 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400' : 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-100 dark:border-slate-700'}`}
+                                >
+                                    <Icon name={isMuted ? "VolumeX" : "Volume2"} size={20} />
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                            <div className="flex justify-between items-center mb-6">
+                        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
+                            <div className="flex justify-between items-center mb-4">
                                 <div>
-                                    <h2 className="text-2xl font-black tracking-tight flex items-center gap-2 text-slate-800">
-                                        <Icon name="CalendarDays" className="text-indigo-600" size={24} /> Semana {currentWeek}
+                                    <h2 className="text-2xl font-black tracking-tight flex items-center gap-2 text-slate-800 dark:text-white">
+                                        <Icon name="CalendarDays" className="text-indigo-600 dark:text-indigo-400" size={24} /> Semana {currentWeek}
                                     </h2>
-                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Día {dayOfProgram} de 7</p>
+                                    <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Día {currentDay}</p>
                                 </div>
-                                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 font-black">
-                                    {Math.round((dayOfProgram / 7) * 100)}%
+                                <div className="text-right">
+                                     <div className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Hoy</div>
+                                     <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{sessionsToday} / 3</div>
                                 </div>
                             </div>
                             
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-end">
-                                    <span className="text-sm font-black text-slate-700">SITUACIÓN HOY</span>
-                                    <span className="text-xs font-bold text-indigo-600">{sessionsDone}/3 SESIONES</span>
-                                </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} className="relative">
-                                            <div className={`h-3 rounded-full transition-all duration-700 ${i <= sessionsDone ? 'bg-green-500 shadow-lg shadow-green-200' : 'bg-slate-100'}`} />
-                                            {i <= sessionsDone && <div className="absolute -top-1 -right-1 text-green-600 bg-white rounded-full"><Icon name="CheckCircle2" size={12} /></div>}
-                                        </div>
-                                    ))}
-                                </div>
-                                <p className="text-[10px] text-slate-400 font-medium italic text-center">
-                                    {sessionsDone === 0 ? "Aún no has empezado hoy." : 
-                                    sessionsDone < 3 ? `Te faltan ${3 - sessionsDone} sesiones para la meta del día.` : 
-                                    "¡Meta diaria cumplida! Mañana continuará tu progreso."}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4">
-                            <button 
-                                onClick={startNewSessionAction}
-                                className="group bg-slate-900 p-6 rounded-3xl flex items-center justify-between transition-all active:scale-[0.98] shadow-lg shadow-slate-300"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white">
-                                        <Icon name="Play" fill="currentColor" size={24} />
+                            <div className="grid grid-cols-3 gap-3 mb-4">
+                                {[1, 2, 3].map(i => (
+                                    <div key={i} className="relative h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                        <div className={`absolute inset-0 transition-all duration-700 ${i <= sessionsToday ? 'bg-green-500' : 'bg-transparent'}`} />
                                     </div>
-                                    <div className="text-left">
-                                        <span className="block font-black text-white uppercase tracking-tight">
-                                            {sessionsDone >= 3 ? "Entrenamiento Extra" : `Iniciar Sesión ${sessionsDone + 1}`}
-                                        </span>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Presiona para comenzar rutina</span>
-                                    </div>
-                                </div>
-                                <div className="text-slate-600 group-hover:translate-x-1 transition-transform">
-                                    <Icon name="ChevronRight" />
-                                </div>
-                            </button>
-
-                            <button 
-                                onClick={() => setView('history')}
-                                className="bg-white p-5 rounded-3xl border border-slate-100 flex flex-col items-center gap-2 shadow-sm active:scale-95 transition-all"
-                            >
-                                <Icon name="History" className="text-slate-400" size={24} />
-                                <span className="text-xs font-black uppercase text-slate-700">Historial & Reinicio</span>
-                            </button>
-                        </div>
-
-                        <div className="bg-slate-100 p-5 rounded-3xl border border-slate-200">
-                            <h3 className="font-black text-slate-500 text-[10px] uppercase tracking-[0.2em] mb-4">Nivel del Programa</h3>
-                            <div className="flex overflow-x-auto gap-3 pb-2 no-scrollbar">
-                                {PROGRAM_DATA.map((d) => (
-                                    <button
-                                        key={d.week}
-                                        onClick={() => setCurrentWeek(d.week)}
-                                        className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center border-2 transition-all ${
-                                            currentWeek === d.week 
-                                            ? 'bg-indigo-600 border-indigo-600 text-white font-black shadow-md' 
-                                            : 'bg-white border-slate-200 text-slate-400 font-bold'
-                                        }`}
-                                    >
-                                        {d.week}
-                                    </button>
                                 ))}
                             </div>
+                            
+                            <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                <h3 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase mb-1">{routine.title}</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{routine.description}</p>
+                            </div>
                         </div>
+
+                        {!isPhase3 ? (
+                            <button 
+                                onClick={() => {
+                                    resetTimer();
+                                    setView('timer');
+                                }}
+                                disabled={sessionsToday >= 3}
+                                className={`group p-6 rounded-3xl flex items-center justify-between transition-all shadow-lg ${
+                                    sessionsToday >= 3 
+                                    ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed opacity-70' 
+                                    : 'bg-slate-900 dark:bg-indigo-600 active:scale-[0.98] shadow-slate-300 dark:shadow-none'
+                                }`}
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${sessionsToday >= 3 ? 'bg-slate-300 dark:bg-slate-700 text-white' : 'bg-white/10 text-white'}`}>
+                                        {sessionsToday >= 3 ? <Icon name="CheckCircle2" /> : <Icon name="Play" fill="currentColor" />}
+                                    </div>
+                                    <div className="text-left">
+                                        <span className={`block font-black uppercase tracking-tight ${sessionsToday >= 3 ? 'text-slate-500 dark:text-slate-400' : 'text-white'}`}>
+                                            {sessionsToday >= 3 ? "Objetivo Cumplido" : `Iniciar Sesión ${sessionsToday + 1}`}
+                                        </span>
+                                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-200 uppercase">
+                                            {sessionsToday >= 3 ? "Vuelve mañana" : "Toca para empezar"}
+                                        </span>
+                                    </div>
+                                </div>
+                                {sessionsToday < 3 && <div className="text-slate-600 dark:text-slate-300 group-hover:translate-x-1 transition-transform"><Icon name="ChevronRight" /></div>}
+                            </button>
+                        ) : (
+                            <div className="p-6 bg-indigo-600 text-white rounded-3xl shadow-lg">
+                                <h3 className="font-black text-xl mb-2">¡Programa Completado!</h3>
+                                <p className="text-sm opacity-90">Has superado las 8 semanas. Consulta la guía para la Fase 3: Integración Sexual.</p>
+                            </div>
+                        )}
+
+                        <button 
+                            onClick={() => setView('history')}
+                            className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all"
+                        >
+                            <Icon name="History" className="text-slate-400" size={20} />
+                            <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300">Historial & Reinicio</span>
+                        </button>
                     </div>
                 );
             };
 
-            const WorkoutTimer = () => {
-                const data = PROGRAM_DATA[currentWeek - 1];
-                const totalReps = phase === 'slow' ? data.slowReps : data.fastReps;
+            const renderWorkoutTimer = () => {
+                const routine = getRoutineForWeek(currentWeek);
+                const currentStep = routine.steps[stepIndex];
+
+                if (!currentStep && phase !== 'complete') {
+                    setView('dashboard');
+                    return null;
+                }
                 
                 return (
-                    <div className="flex flex-col items-center justify-between py-6 h-screen max-w-md mx-auto p-4 bg-slate-50">
-                        <div className="text-center mt-4">
-                            <div className="flex items-center justify-center gap-2 mb-1">
-                                <Icon name="Trophy" size={16} className="text-yellow-500" />
-                                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Semana {currentWeek}</span>
+                    <div className="flex flex-col items-center justify-between py-6 h-screen max-w-md mx-auto p-4 bg-slate-50 dark:bg-slate-950">
+                        {phase === 'ready' ? (
+                            <div className="flex flex-col items-center justify-center h-full w-full animate-in zoom-in-95">
+                                <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-2 uppercase text-center">Sesión {sessionsToday + 1}</h2>
+                                <p className="text-slate-500 dark:text-slate-400 font-medium text-center mb-10 max-w-xs">{routine.title}</p>
+                                
+                                <button 
+                                    onClick={startRoutine}
+                                    className="w-48 h-48 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-2xl shadow-indigo-300 dark:shadow-indigo-900/50 hover:scale-105 transition-all mb-8"
+                                >
+                                    <Icon name="Play" fill="currentColor" size={64} />
+                                </button>
+                                <button onClick={() => setView('dashboard')} className="text-slate-400 font-bold uppercase tracking-widest text-xs">Cancelar</button>
                             </div>
-                            <h2 className="text-3xl font-black text-slate-900 uppercase">
-                                {phase === 'slow' ? 'Lentos' : phase === 'fast' ? 'Rápidos' : 'En Posición'}
-                            </h2>
-                        </div>
-
-                        <div className="relative w-72 h-72 flex items-center justify-center">
-                            <svg className="absolute inset-0 w-full h-full -rotate-90">
-                                <circle cx="144" cy="144" r="130" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-200" />
-                                {timerRunning && (
-                                    <circle
-                                        cx="144" cy="144" r="130" stroke="currentColor" strokeWidth="12" fill="transparent"
-                                        strokeDasharray={816}
-                                        strokeDashoffset={816 * (1 - timeLeft / (phase === 'slow' ? data.slowTime : data.fastTime))}
-                                        strokeLinecap="round"
-                                        className="text-indigo-600 transition-all duration-1000 linear"
-                                    />
-                                )}
-                            </svg>
-                            
-                            <div className="text-center z-10">
-                                {phase === 'ready' ? (
-                                    <button 
-                                        onClick={startExercise}
-                                        className="w-44 h-44 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-2xl shadow-indigo-300 hover:scale-105 transition-all"
-                                    >
-                                        <Icon name="Play" fill="currentColor" size={56} />
-                                    </button>
-                                ) : phase === 'complete' ? (
-                                    <div className="flex flex-col items-center animate-bounce">
-                                        <div className="text-green-500 mb-2"><Icon name="CheckCircle2" size={72} /></div>
-                                        <span className="font-black text-2xl">¡LOGRADO!</span>
+                        ) : phase === 'complete' ? (
+                            <div className="flex flex-col items-center justify-center h-full w-full animate-in zoom-in-95">
+                                <div className="text-green-500 mb-6"><Icon name="CheckCircle2" size={96} /></div>
+                                <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-2">¡SESIÓN LISTA!</h2>
+                                <p className="text-slate-400 font-bold uppercase tracking-widest mb-10">
+                                    {sessionsToday + 1} de 3 completadas
+                                </p>
+                                <button 
+                                    onClick={() => setView('dashboard')}
+                                    className="w-full max-w-xs py-5 bg-indigo-600 text-white rounded-3xl font-black shadow-xl uppercase tracking-widest text-sm active:scale-95 transition-all"
+                                >
+                                    Continuar
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="text-center mt-4 w-full">
+                                    <div className="flex justify-between items-center mb-2 px-2">
+                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Paso {stepIndex + 1}/{routine.steps.length}</span>
+                                         <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">{currentStep.name}</span>
                                     </div>
-                                ) : (
-                                    <div className="flex flex-col items-center">
-                                        <span className={`text-7xl font-black mb-2 tabular-nums transition-all ${subPhase === 'contract' ? 'text-indigo-600 scale-110' : 'text-slate-300'}`}>
-                                            {timeLeft > 0 ? timeLeft : (subPhase.startsWith('Ráfaga') ? currentRep : '')}
+                                    <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden w-full">
+                                        <div 
+                                            className="h-full bg-indigo-600 transition-all duration-500" 
+                                            style={{width: `${((stepIndex) / routine.steps.length) * 100}%`}} 
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="relative w-72 h-72 flex items-center justify-center my-8">
+                                    <div className={`absolute inset-0 rounded-full border-8 transition-colors duration-500 ${subPhase === 'work' || subPhase === 'hold' ? 'border-indigo-100 dark:border-indigo-900/30' : 'border-slate-100 dark:border-slate-800'}`}></div>
+                                    
+                                    {(subPhase === 'work' || subPhase === 'hold') && (
+                                        <div className="absolute inset-0 rounded-full border-8 border-indigo-500 opacity-20 animate-pulse-ring"></div>
+                                    )}
+
+                                    <div className="text-center z-10 flex flex-col items-center">
+                                        <span className={`text-8xl font-black tabular-nums transition-all ${subPhase === 'work' || subPhase === 'hold' ? 'text-indigo-600 dark:text-indigo-400 scale-110' : 'text-slate-300 dark:text-slate-700'}`}>
+                                            {timeLeft}
                                         </span>
-                                        <div className="bg-slate-100 px-4 py-1 rounded-full mt-2">
-                                            <span className="text-slate-500 font-black uppercase tracking-widest text-[10px]">
-                                                {subPhase === 'contract' ? 'CONTRAE' : subPhase === 'relax' ? 'RELAJA' : 'BOMBEO'} • {currentRep} / {totalReps}
+                                        <div className={`px-4 py-1.5 rounded-full mt-4 flex items-center gap-2 ${subPhase === 'work' || subPhase === 'hold' ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                                            {subPhase === 'work' || subPhase === 'hold' ? <Icon name="Zap" size={14} /> : <Icon name="Activity" size={14} />}
+                                            <span className="font-black uppercase tracking-widest text-xs">
+                                                {subPhase === 'work' ? 'CONTRAE' : subPhase === 'hold' ? 'SOSTÉN (50%)' : 'RELAJA'}
                                             </span>
                                         </div>
+                                        {currentStep.type === 'reps' && (
+                                            <span className="text-slate-400 text-xs font-bold mt-2 uppercase tracking-widest">
+                                                Rep {currentRep} / {currentStep.count}
+                                            </span>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        </div>
+                                </div>
 
-                        <div className="flex items-center gap-6 mb-8">
-                            {phase !== 'ready' && phase !== 'complete' && (
-                                <>
-                                    <button onClick={() => setTimerRunning(!timerRunning)} className="w-16 h-16 rounded-3xl bg-white border-2 border-slate-100 flex items-center justify-center text-slate-800 shadow-sm active:scale-95 transition-all">
-                                        {timerRunning ? <Icon name="Pause" fill="currentColor" size={28} /> : <Icon name="Play" fill="currentColor" size={28} />}
-                                    </button>
-                                    <button onClick={resetTimer} className="w-16 h-16 rounded-3xl bg-white border-2 border-slate-100 flex items-center justify-center text-slate-400 active:scale-95 transition-all">
-                                        <Icon name="RotateCcw" size={24} />
-                                    </button>
-                                </>
-                            )}
-                        </div>
+                                <div className="text-center mb-8 px-4 h-24 flex flex-col items-center justify-start">
+                                    <p className="text-slate-500 dark:text-slate-400 font-medium text-sm mb-2">{currentStep.instruction}</p>
+                                    
+                                    {(subPhase === 'work' || subPhase === 'rest' || subPhase === 'hold') && (
+                                        <div key={`${subPhase}-${currentRep}`} className="bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-xl border border-indigo-100 dark:border-indigo-800/50 animate-fade-in-up">
+                                            <p className="text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-center gap-1.5 text-center leading-tight">
+                                                <Icon name="Info" size={12} className="flex-shrink-0" />
+                                                {getCurrentTip(subPhase, currentRep)}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
 
-                        {phase === 'complete' && (
-                            <button 
-                                onClick={() => setView('dashboard')}
-                                className="w-full max-w-xs py-5 bg-indigo-600 text-white rounded-3xl font-black shadow-xl uppercase tracking-widest text-sm active:scale-95 transition-all mb-8"
-                            >
-                                Volver al Panel
-                            </button>
-                        )}
-                        
-                        {phase === 'ready' && (
-                             <button onClick={() => setView('dashboard')} className="text-slate-400 font-bold uppercase tracking-widest text-xs mb-8">Cancelar</button>
+                                <button onClick={() => setTimerRunning(!timerRunning)} className="mb-4 w-20 h-20 rounded-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-800 dark:text-white shadow-lg active:scale-95 transition-all">
+                                    {timerRunning ? <Icon name="Pause" fill="currentColor" size={32} /> : <Icon name="Play" fill="currentColor" size={32} />}
+                                </button>
+                                <button onClick={resetTimer} className="text-slate-400 font-bold uppercase tracking-widest text-xs">Reiniciar</button>
+                            </>
                         )}
                     </div>
                 );
             };
 
-            const HistoryList = () => {
+            const renderHistoryList = () => {
                 const sorted = [...history].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
                 return (
-                    <div className="flex flex-col h-screen max-w-md mx-auto p-4 bg-slate-50">
+                    <div className="flex flex-col h-screen max-w-md mx-auto p-4 bg-slate-50 dark:bg-slate-950">
                         <div className="flex justify-between items-center mb-6 mt-4">
-                            <h2 className="text-2xl font-black text-slate-800">Actividad</h2>
+                            <h2 className="text-2xl font-black text-slate-800 dark:text-white">Actividad</h2>
                             {history.length > 0 && (
                                 <button 
                                     onClick={() => setShowResetConfirm(true)}
-                                    className="flex items-center gap-1.5 text-red-500 font-black text-[10px] uppercase tracking-widest hover:opacity-70 transition-opacity bg-red-50 px-3 py-1.5 rounded-full"
+                                    className="flex items-center gap-1.5 text-red-500 font-black text-[10px] uppercase tracking-widest hover:opacity-70 transition-opacity bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-full"
                                 >
                                     <Icon name="Trash2" size={14} /> Reiniciar
                                 </button>
@@ -520,24 +601,24 @@
 
                         <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-4">
                             {history.length === 0 ? (
-                                <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
-                                    <div className="text-slate-200 mb-4 flex justify-center"><Icon name="History" size={48} /></div>
-                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Aún no hay registros</p>
+                                <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800">
+                                    <div className="text-slate-200 dark:text-slate-700 mb-4 flex justify-center"><Icon name="History" size={48} /></div>
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Sin registros</p>
                                 </div>
                             ) : (
                                 sorted.map((item, idx) => (
-                                    <div key={idx} className="bg-white p-5 rounded-3xl border border-slate-100 flex items-center justify-between shadow-sm">
+                                    <div key={idx} className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-100 dark:border-slate-800 flex items-center justify-between shadow-sm">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-500">
+                                            <div className="w-12 h-12 rounded-2xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-500">
                                                 <Icon name="Clock" size={22} />
                                             </div>
                                             <div>
-                                                <div className="font-black text-sm uppercase tracking-tight text-slate-800">Sesión Completada</div>
-                                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Semana {item.week}</div>
+                                                <div className="font-black text-sm uppercase tracking-tight text-slate-800 dark:text-white">Sesión {sorted.length - idx}</div>
+                                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Semana {item.week} • Día {item.day}</div>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-xs font-black text-slate-700">
+                                            <div className="text-xs font-black text-slate-700 dark:text-slate-300">
                                                 {new Date(item.timestamp).toLocaleDateString()}
                                             </div>
                                             <div className="text-[10px] text-slate-400 font-bold uppercase">
@@ -548,48 +629,57 @@
                                 ))
                             )}
                         </div>
-                        <button onClick={() => setView('dashboard')} className="w-full mt-4 py-5 border-2 border-slate-200 rounded-3xl font-black text-slate-400 uppercase tracking-[0.2em] text-xs active:scale-95 transition-all">Cerrar Historial</button>
+                        <button onClick={() => setView('dashboard')} className="w-full mt-4 py-5 border-2 border-slate-200 dark:border-slate-800 rounded-3xl font-black text-slate-400 uppercase tracking-[0.2em] text-xs active:scale-95 transition-all">Volver</button>
                     </div>
                 );
             };
 
-            const ResetModal = () => (
+            const renderResetModal = () => (
                  <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-300">
+                    <div className="bg-white dark:bg-slate-900 w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-300">
                         <div className="flex justify-center mb-6">
-                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500">
+                            <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-500">
                                 <Icon name="AlertTriangle" size={32} />
                             </div>
                         </div>
-                        <h3 className="text-center font-black text-xl mb-2 text-slate-800">¿Reiniciar todo?</h3>
-                        <p className="text-center text-slate-500 text-sm mb-8 leading-relaxed">Se borrará permanentemente todo tu historial y volverás a la Semana 1.</p>
-                        
+                        <h3 className="text-center font-black text-xl mb-2 text-slate-800 dark:text-white">¿Reiniciar todo?</h3>
+                        <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">Se borrará permanentemente todo tu historial y volverás a la Semana 1.</p>
                         <div className="space-y-3">
-                            <button 
-                                onClick={resetAllProgress}
-                                className="w-full py-4 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-red-200 flex items-center justify-center gap-2 active:scale-95 transition-all"
-                            >
-                                <Icon name="Trash2" size={16} />
-                                Confirmar Borrado
-                            </button>
-                            <button 
-                                onClick={() => setShowResetConfirm(false)}
-                                className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
-                            >
-                                <Icon name="X" size={16} />
-                                Cancelar
-                            </button>
+                            <button onClick={resetAllProgress} className="w-full py-4 bg-red-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-lg shadow-red-200 dark:shadow-none">Confirmar</button>
+                            <button onClick={() => setShowResetConfirm(false)} className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-black uppercase tracking-widest text-xs">Cancelar</button>
                         </div>
                     </div>
                 </div>
             );
 
+            const renderPhase3Modal = () => (
+                 <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-indigo-900/90 backdrop-blur-sm animate-in fade-in duration-500">
+                    <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl animate-in slide-in-from-bottom-10 duration-500 text-center">
+                        <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-500 mx-auto mb-6">
+                            <Icon name="Trophy" size={40} />
+                        </div>
+                        <h3 className="font-black text-2xl mb-2 text-slate-900">¡Felicidades!</h3>
+                        <p className="text-slate-500 text-sm mb-6 leading-relaxed">Has completado las 8 semanas de entrenamiento físico.</p>
+                        <div className="bg-indigo-50 p-4 rounded-2xl mb-6">
+                            <h4 className="font-black text-indigo-700 uppercase text-xs mb-1">Siguiente Paso</h4>
+                            <p className="font-bold text-slate-800 text-sm">Fase 3: Integración Sexual y Modulación Conductual</p>
+                            <p className="text-xs text-slate-500 mt-1">Semanas 9 a 12</p>
+                        </div>
+                        <button onClick={() => setShowPhase3Modal(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs">Entendido</button>
+                    </div>
+                </div>
+            );
+
+            // Container Wrapper con clase dark condicionada
             return (
-                <div className="min-h-screen font-sans selection:bg-indigo-100">
-                    {view === 'dashboard' && <Dashboard />}
-                    {view === 'timer' && <WorkoutTimer />}
-                    {view === 'history' && <HistoryList />}
-                    {showResetConfirm && <ResetModal />}
+                <div className={darkMode ? "dark" : ""}>
+                    <div className="min-h-screen font-sans selection:bg-indigo-100 dark:selection:bg-indigo-900 dark:bg-slate-950 transition-colors duration-300">
+                        {view === 'dashboard' && renderDashboard()}
+                        {view === 'timer' && renderWorkoutTimer()}
+                        {view === 'history' && renderHistoryList()}
+                        {showResetConfirm && renderResetModal()}
+                        {showPhase3Modal && renderPhase3Modal()}
+                    </div>
                 </div>
             );
         }
