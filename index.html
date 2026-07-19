@@ -3,792 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PelvicFlow</title>
-    <link rel="manifest" href="manifest.json">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #0f172a;
-            --surface-color: #1e293b;
-            --primary-color: #8b5cf6;
-            --primary-glow: rgba(139, 92, 246, 0.5);
-            --secondary-color: #10b981;
-            --error-color: #ef4444;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        header {
-            padding: 1.5rem;
-            text-align: center;
-            background-color: var(--surface-color);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            z-index: 10;
-            flex-shrink: 0;
-        }
-
-        header h1 {
-            font-weight: 800;
-            font-size: 1.5rem;
-            background: linear-gradient(135deg, #a78bfa, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        main {
-            flex-grow: 1;
-            overflow-y: auto;
-            position: relative;
-        }
-
-        .view {
-            display: none;
-            padding: 1.5rem;
-            animation: fadeIn 0.3s ease;
-            height: 100%;
-        }
-
-        .view.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .card {
-            background-color: var(--surface-color);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        h2 {
-            font-size: 1.25rem;
-            margin-bottom: 1rem;
-            color: var(--text-main);
-        }
-
-        p {
-            color: var(--text-muted);
-            line-height: 1.6;
-            margin-bottom: 1rem;
-        }
-
-        .btn {
-            display: block;
-            width: 100%;
-            padding: 1rem;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 600;
-            color: white;
-            background-color: var(--primary-color);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: center;
-            margin-bottom: 1rem;
-            box-shadow: 0 4px 15px var(--primary-glow);
-        }
-
-        .btn:active {
-            transform: scale(0.98);
-        }
-
-        .btn.secondary {
-            background-color: transparent;
-            border: 2px solid var(--primary-color);
-            box-shadow: none;
-        }
-
-        .btn.error {
-            background-color: transparent;
-            border: 2px solid var(--error-color);
-            color: var(--error-color);
-            box-shadow: none;
-        }
-
-        .btn.disabled {
-            background-color: #334155;
-            color: var(--text-muted);
-            box-shadow: none;
-            pointer-events: none;
-        }
-
-        /* Dashboard Specifics */
-        .progress-ring-container {
-            display: flex;
-            justify-content: center;
-            margin: 2rem 0;
-            position: relative;
-        }
-
-        .sessions-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .session-item {
-            background-color: rgba(255,255,255,0.05);
-            border-radius: 12px;
-            padding: 1rem 0.5rem;
-            text-align: center;
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
-        }
-
-        .session-item.completed {
-            border-color: var(--secondary-color);
-            background-color: rgba(16, 185, 129, 0.1);
-        }
-
-        .session-item i {
-            display: block;
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        /* Workout Timer Specifics */
-        .workout-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            text-align: center;
-        }
-
-        .timer-circle {
-            width: 250px;
-            height: 250px;
-            border-radius: 50%;
-            background: radial-gradient(circle, var(--surface-color) 0%, var(--bg-color) 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border: 4px solid var(--surface-color);
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            margin-bottom: 2rem;
-        }
-
-        .timer-circle.contract {
-            transform: scale(0.85);
-            border-color: var(--primary-color);
-            box-shadow: 0 0 50px var(--primary-glow);
-        }
-
-        .timer-circle.rest {
-            transform: scale(1.1);
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 50px rgba(16, 185, 129, 0.3);
-        }
-
-        .timer-text {
-            font-size: 4rem;
-            font-weight: 800;
-        }
-
-        .instruction-text {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--primary-color);
-            margin-bottom: 0.5rem;
-            min-height: 2em;
-        }
-
-        .sub-instruction {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 2rem;
-            min-height: 3em;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background-color: var(--surface-color);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 2rem;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background-color: var(--primary-color);
-            width: 0%;
-            transition: width 0.3s linear;
-        }
-
-        /* Checkbox list */
-        .check-list {
-            list-style: none;
-            margin-bottom: 1.5rem;
-        }
-
-        .check-list li {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-            background: rgba(255,255,255,0.05);
-            padding: 1rem;
-            border-radius: 8px;
-        }
-
-        .check-list input[type="checkbox"] {
-            margin-right: 1rem;
-            margin-top: 0.25rem;
-            transform: scale(1.5);
-            accent-color: var(--primary-color);
-        }
-
-        /* Nav Bar */
-        nav {
-            display: flex;
-            background-color: var(--surface-color);
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
-            flex-shrink: 0;
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-
-        .nav-item {
-            flex: 1;
-            padding: 1rem;
-            text-align: center;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: color 0.2s;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .nav-item.active {
-            color: var(--primary-color);
-            border-top: 3px solid var(--primary-color);
-        }
-
-        .badge {
-            display: inline-block;
-            background-color: var(--primary-color);
-            color: white;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 999px;
-            margin-left: 0.5rem;
-            vertical-align: middle;
-        }
-
-        .hidden { display: none !important; }
-    </style>
+    <title>PelvicRehab - Entrenamiento Dual</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./index.css">
 </head>
 <body>
-
-    <header>
-        <h1>PelvicFlow</h1>
-    </header>
-
-    <main>
-        <!-- DASHBOARD VIEW -->
-        <div id="view-dashboard" class="view active">
-            <div class="card" id="recovery-alert" style="display: none; border: 1px solid var(--error-color);">
-                <h2 style="color: var(--error-color)">Modo Recuperación Activo</h2>
-                <p>El entrenamiento de fuerza está bloqueado. Quedan <span id="recovery-time"></span> horas.</p>
-                <button class="btn" onclick="startRecoverySession()">Iniciar Kegel Inverso</button>
-            </div>
-
-            <div class="card" id="main-dashboard-content">
-                <h2>Tu Progreso <span class="badge" id="phase-badge">Fase 1</span></h2>
-                <p>Racha actual: <strong style="color: white" id="streak-days">0 días</strong> consecutivos.</p>
+    <div id="app">
+        <!-- VISTA: Advertencia Clínica (Bloqueante) -->
+        <section id="view-warning" class="view active">
+            <div class="glass-card danger-card">
+                <h1>⚠️ ALERTA CLÍNICA CRÍTICA</h1>
+                <p>El uso de la técnica de <strong>"detener el flujo de orina"</strong> como ejercicio regular está absolutamente PROHIBIDO.</p>
+                <p>Realizarlo repetidamente causa retención de orina, hipertonía e infecciones graves. Esta técnica solo se permite <em>una única vez en la vida</em> para identificar el músculo.</p>
                 
-                <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem;">Sesiones de Hoy (Requeridas: 3)</h3>
-                <div class="sessions-grid">
-                    <div class="session-item" id="session-m">
-                        <i>🌅</i>
-                        <span>Mañana</span>
+                <label class="checkbox-container">
+                    <input type="checkbox" id="chk-warning">
+                    <span class="checkmark"></span>
+                    Entiendo los riesgos y prometo no usar esta técnica para entrenar.
+                </label>
+                
+                <button id="btn-accept-warning" class="btn danger-btn" disabled>Aceptar y Continuar</button>
+            </div>
+        </section>
+        <!-- VISTA: Calibración -->
+        <section id="view-calibration" class="view">
+            <div class="glass-card">
+                <h2>Paso 0: Calibración Postural</h2>
+                <p>Acuéstate boca arriba con las rodillas flexionadas.</p>
+                <p>Para asegurar que no hay sustitución sinérgica, confirma lo siguiente:</p>
+                
+                <div class="checklist">
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="chk-calib">
+                        <span class="checkmark"></span>
+                        No estoy tensando el abdomen.
+                    </label>
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="chk-calib">
+                        <span class="checkmark"></span>
+                        No estoy apretando glúteos ni muslos.
+                    </label>
+                    <label class="checkbox-container">
+                        <input type="checkbox" class="chk-calib">
+                        <span class="checkmark"></span>
+                        He verificado el "guiño anatómico" (levantamiento testicular).
+                    </label>
+                </div>
+                
+                <button id="btn-complete-calibration" class="btn primary-btn" disabled>Iniciar Protocolo</button>
+            </div>
+        </section>
+        <!-- VISTA: Dashboard -->
+        <section id="view-dashboard" class="view">
+            <header>
+                <h2>Panel de Control</h2>
+                <div class="level-badge" id="lbl-level">Nivel 1</div>
+            </header>
+            
+            <div class="glass-card progress-card">
+                <h3>Progreso Clínico</h3>
+                <p id="lbl-streak">Día 0 de 14 para subir de nivel</p>
+                <div class="progress-bar"><div class="progress-fill" id="bar-streak"></div></div>
+                <p class="rule-hint">Requiere 100% de adherencia clínica.</p>
+            </div>
+            <div class="actions">
+                <button id="btn-start-training" class="btn primary-btn action-btn">
+                    <span class="icon">⚡</span>
+                    Entrenamiento Diario
+                </button>
+                <button id="btn-start-rk" class="btn secondary-btn action-btn">
+                    <span class="icon">🌬️</span>
+                    Práctica Aislada (Reverse Kegels)
+                </button>
+            </div>
+            
+            <div class="daily-status">
+                <p id="lbl-morning-status">Mañana: Pendiente</p>
+                <p id="lbl-evening-status">Noche: Pendiente</p>
+                <p id="lbl-rk-status">Reverse Kegels: 0/10</p>
+            </div>
+        </section>
+        <!-- VISTA: Reproductor de Entrenamiento (Timer UI) -->
+        <section id="view-training" class="view">
+            <div class="training-header">
+                <h2 id="lbl-training-block">Bloque A</h2>
+                <p id="lbl-training-phase">Fuerza Explosiva</p>
+            </div>
+            
+            <div class="timer-container">
+                <div class="timer-circle" id="timer-ui">
+                    <span id="timer-text">Listo</span>
+                </div>
+                <div class="timer-message" id="timer-msg">Prepárate...</div>
+                <div class="timer-alert hidden" id="timer-alert">¡NO AGUANTES LA RESPIRACIÓN!</div>
+            </div>
+            
+            <div class="training-stats">
+                <p>Serie: <span id="lbl-serie">1/3</span></p>
+                <p>Repetición: <span id="lbl-rep">0/10</span></p>
+            </div>
+            
+            <button id="btn-abort-training" class="btn text-btn">Abortar Sesión</button>
+        </section>
+        <!-- VISTA: Cuestionario -->
+        <section id="view-questionnaire" class="view">
+            <div class="glass-card">
+                <h2>Control de Calidad</h2>
+                <p>Sé honesto. La hipertonía empeorará si subes de nivel sin dominar lo básico.</p>
+                
+                <div class="checklist">
+                    <label class="checkbox-container checkbox-question">
+                        <input type="checkbox" id="q-accessory">
+                        <span class="checkmark"></span>
+                        ¿Tensaste el abdomen o glúteos? (Marcar si fallaste)
+                    </label>
+                    <label class="checkbox-container checkbox-question">
+                        <input type="checkbox" id="q-breath">
+                        <span class="checkmark"></span>
+                        ¿Aguantaste la respiración en algún momento? (Marcar si fallaste)
+                    </label>
+                    <label class="checkbox-container checkbox-question">
+                        <input type="checkbox" id="q-relax">
+                        <span class="checkmark"></span>
+                        ¿Lograste relajación total (Drop) en los descansos? (Obligatorio)
+                    </label>
+                </div>
+                
+                <button id="btn-submit-questionnaire" class="btn primary-btn">Guardar Sesión</button>
+            </div>
+        </section>
+        
+        <!-- VISTA: Reverse Kegel Tracker -->
+        <section id="view-rk" class="view">
+            <div class="glass-card">
+                <h2>Reverse Kegel Aislado</h2>
+                <p>Inhala profundo (expande el vientre) y suelta el suelo pélvico (Drop).</p>
+                
+                <div class="timer-container small">
+                    <div class="timer-circle" id="rk-timer-ui">
+                        <span id="rk-timer-text">Listo</span>
                     </div>
-                    <div class="session-item" id="session-a">
-                        <i>☀️</i>
-                        <span>Tarde</span>
-                    </div>
-                    <div class="session-item" id="session-e">
-                        <i>🌙</i>
-                        <span>Noche</span>
-                    </div>
+                    <div class="timer-message" id="rk-timer-msg">Presiona comenzar</div>
                 </div>
-
-                <button class="btn" id="btn-start-session" onclick="showView('view-pre-workout')">Empezar Sesión</button>
-                <button class="btn error" style="margin-top: 2rem;" onclick="reportPain()">Siento Dolor o Empeoramiento</button>
+                
+                <button id="btn-do-rk" class="btn primary-btn">Comenzar Respiración</button>
+                <button id="btn-close-rk" class="btn text-btn" style="margin-top: 1rem;">Volver</button>
             </div>
-        </div>
-
-        <!-- PRE-WORKOUT VIEW -->
-        <div id="view-pre-workout" class="view">
-            <div class="card">
-                <h2>Requisitos Previos</h2>
-                <p>Antes de comenzar, confirma que has leído y cumplido lo siguiente:</p>
-                
-                <ul class="check-list">
-                    <li>
-                        <input type="checkbox" id="check-bladder">
-                        <label for="check-bladder">He vaciado mi vejiga. (¡Obligatorio! Entrenar con vejiga llena puede causar infecciones o daño).</label>
-                    </li>
-                    <li>
-                        <input type="checkbox" id="check-breathing">
-                        <label for="check-breathing">Me comprometo a NO aguantar la respiración. Contaré en voz alta durante las contracciones.</label>
-                    </li>
-                    <li id="li-posture">
-                        <input type="checkbox" id="check-posture">
-                        <label for="check-posture" id="label-posture">Estoy recostado boca arriba con las rodillas flexionadas.</label>
-                    </li>
-                </ul>
-
-                <button class="btn disabled" id="btn-confirm-pre" onclick="startWorkout()">Comenzar Entrenamiento</button>
-                <button class="btn secondary" onclick="showView('view-dashboard')">Cancelar</button>
-            </div>
-        </div>
-
-        <!-- WORKOUT VIEW -->
-        <div id="view-workout" class="view">
-            <div class="workout-container">
-                <h2 id="workout-title">Calentamiento</h2>
-                
-                <div class="progress-bar">
-                    <div class="progress-fill" id="workout-progress"></div>
-                </div>
-
-                <div class="instruction-text" id="instruction-main">Prepárate...</div>
-                <div class="sub-instruction" id="instruction-sub">Encuentra la posición cómoda</div>
-
-                <div class="timer-circle" id="timer-circle">
-                    <div class="timer-text" id="timer-display">3</div>
-                </div>
-
-                <div style="width: 100%; display: flex; gap: 1rem; margin-top: auto;">
-                    <button class="btn secondary" onclick="quitWorkout()">Abandonar</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- PROGRESSION QUIZ VIEW -->
-        <div id="view-progression" class="view">
-            <div class="card">
-                <h2>¡Felicidades por tu constancia!</h2>
-                <p>Has mantenido tu racha por suficiente tiempo. Para desbloquear la siguiente fase, responde honestamente:</p>
-                
-                <ul class="check-list">
-                    <li>
-                        <input type="checkbox" id="q1">
-                        <label for="q1">¿Logras hacer las contracciones sin temblar?</label>
-                    </li>
-                    <li>
-                        <input type="checkbox" id="q2">
-                        <label for="q2">¿Logras aislar el movimiento sin apretar el abdomen o los glúteos?</label>
-                    </li>
-                    <li>
-                        <input type="checkbox" id="q3">
-                        <label for="q3">¿Sientes que la última repetición es igual de fuerte que la primera?</label>
-                    </li>
-                </ul>
-
-                <button class="btn disabled" id="btn-unlock" onclick="unlockNextPhase()">Desbloquear Siguiente Fase</button>
-                <button class="btn secondary" onclick="skipProgression()">Aún no estoy listo</button>
-            </div>
-        </div>
-
-        <!-- INSTRUCTIONS VIEW -->
-        <div id="view-instructions" class="view">
-            <div class="card">
-                <h2>Manual Completo</h2>
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="color: var(--primary-color); margin-bottom: 0.5rem;">El Vector de Fuerza</h3>
-                    <p>Imagina una "succión interna" o que intentas elevar la base del pene hacia el abdomen. No se trata de empujar hacia afuera, sino de tirar hacia arriba y adentro.</p>
-                </div>
-                
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="color: var(--primary-color); margin-bottom: 0.5rem;">Regla de Oro: La Respiración</h3>
-                    <p>¡NUNCA aguantes la respiración! (Maniobra de Valsalva). Esto aumenta la presión intraabdominal y es contraproducente. Cuenta en voz alta durante el esfuerzo.</p>
-                </div>
-
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="color: var(--primary-color); margin-bottom: 0.5rem;">Fase 1 (Principiantes)</h3>
-                    <p>Postura: Decúbito supino (boca arriba, rodillas flexionadas). Esta postura elimina la gravedad y aísla el suelo pélvico.</p>
-                </div>
-
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="color: var(--primary-color); margin-bottom: 0.5rem;">Fase 2 (Intermedios)</h3>
-                    <p>Postura: Sentado o de pie. Añadimos carga gravitacional. Las retenciones son más largas (10 segundos).</p>
-                </div>
-
-                <div style="margin-bottom: 2rem;">
-                    <h3 style="color: var(--primary-color); margin-bottom: 0.5rem;">Kegel Inverso (Recuperación)</h3>
-                    <p>Inhala profundamente expandiendo el diafragma. Envía una señal consciente para empujar muy suavemente el suelo pélvico hacia abajo, buscando liberación y relajación total.</p>
-                </div>
-            </div>
-        </div>
-
-    </main>
-
-    <nav id="bottom-nav">
-        <div class="nav-item active" onclick="switchNav('view-dashboard', this)">Dashboard</div>
-        <div class="nav-item" onclick="switchNav('view-instructions', this)">Instrucciones</div>
-    </nav>
-
-    <script>
-        // --- STATE MANAGEMENT ---
-        const STATE_KEY = 'pelvicflow_state';
-        let state = {
-            currentPhase: 1,
-            streak: 0,
-            lastSessionDate: null,
-            sessionsToday: { m: false, a: false, e: false },
-            blockedUntil: null
-        };
-
-        // --- AUDIO & VIBRATION CONTEXT ---
-        let audioCtx;
-        function playBeep(type) {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                
-                const osc = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                
-                osc.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                
-                if (type === 'contract') {
-                    osc.frequency.value = 880; // High pitch
-                    osc.type = 'sine';
-                    if(navigator.vibrate) navigator.vibrate(200);
-                } else if (type === 'rest') {
-                    osc.frequency.value = 440; // Low pitch
-                    osc.type = 'triangle';
-                    if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
-                } else if (type === 'end') {
-                    osc.frequency.value = 660;
-                    if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 400]);
-                }
-                
-                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-                
-                osc.start(audioCtx.currentTime);
-                osc.stop(audioCtx.currentTime + 0.5);
-            } catch (e) { console.error("Audio error", e); }
-        }
-
-        // --- INITIALIZATION ---
-        function loadState() {
-            const saved = localStorage.getItem(STATE_KEY);
-            if (saved) {
-                state = JSON.parse(saved);
-                checkDailyReset();
-            }
-            updateDashboardUI();
-        }
-
-        function saveState() {
-            localStorage.setItem(STATE_KEY, JSON.stringify(state));
-            updateDashboardUI();
-        }
-
-        function getTodayString() {
-            const d = new Date();
-            return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
-        }
-
-        function checkDailyReset() {
-            const today = getTodayString();
-            if (state.lastSessionDate && state.lastSessionDate !== today) {
-                // Check if they completed all 3 yesterday to maintain streak
-                // Simplified logic: If they didn't finish yesterday, reset streak.
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = `${yesterday.getFullYear()}-${yesterday.getMonth()+1}-${yesterday.getDate()}`;
-                
-                if (state.lastSessionDate !== yesterdayStr || 
-                   (!state.sessionsToday.m || !state.sessionsToday.a || !state.sessionsToday.e)) {
-                    state.streak = 0; // Lost streak
-                } else {
-                    state.streak += 1; // Completed a full day
-                }
-                
-                // Reset today's sessions
-                state.sessionsToday = { m: false, a: false, e: false };
-                
-                // Progression Check (14 days)
-                if (state.streak >= 14 && state.currentPhase < 3) {
-                    showView('view-progression');
-                }
-            }
-            state.lastSessionDate = today;
-            saveState();
-        }
-
-        function updateDashboardUI() {
-            document.getElementById('streak-days').textContent = `${state.streak} días`;
-            document.getElementById('phase-badge').textContent = `Fase ${state.currentPhase}`;
-            
-            document.getElementById('session-m').className = `session-item ${state.sessionsToday.m ? 'completed' : ''}`;
-            document.getElementById('session-a').className = `session-item ${state.sessionsToday.a ? 'completed' : ''}`;
-            document.getElementById('session-e').className = `session-item ${state.sessionsToday.e ? 'completed' : ''}`;
-
-            // Check if blocked
-            const now = new Date().getTime();
-            if (state.blockedUntil && now < state.blockedUntil) {
-                document.getElementById('main-dashboard-content').style.display = 'none';
-                document.getElementById('recovery-alert').style.display = 'block';
-                const hoursLeft = Math.ceil((state.blockedUntil - now) / (1000 * 60 * 60));
-                document.getElementById('recovery-time').textContent = hoursLeft;
-            } else {
-                state.blockedUntil = null; // Unblock if time passed
-                document.getElementById('main-dashboard-content').style.display = 'block';
-                document.getElementById('recovery-alert').style.display = 'none';
-            }
-        }
-
-        // --- NAVIGATION ---
-        function showView(viewId) {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.getElementById(viewId).classList.add('active');
-            
-            if (viewId === 'view-pre-workout') {
-                setupPreWorkout();
-            }
-        }
-
-        function switchNav(viewId, element) {
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            element.classList.add('active');
-            showView(viewId);
-        }
-
-        // --- PRE-WORKOUT ---
-        const checks = ['check-bladder', 'check-breathing', 'check-posture'];
-        function setupPreWorkout() {
-            checks.forEach(id => {
-                const el = document.getElementById(id);
-                el.checked = false;
-                el.onchange = validatePreWorkout;
-            });
-            document.getElementById('btn-confirm-pre').classList.add('disabled');
-            
-            // Adjust posture text based on phase
-            const postureLabel = document.getElementById('label-posture');
-            if(state.currentPhase === 1) {
-                postureLabel.textContent = "Estoy recostado boca arriba con las rodillas flexionadas.";
-            } else if(state.currentPhase === 2) {
-                postureLabel.textContent = "Estoy sentado o de pie con buena postura.";
-            } else {
-                postureLabel.textContent = "Estoy listo para caminar a paso moderado.";
-            }
-        }
-
-        function validatePreWorkout() {
-            const allChecked = checks.every(id => document.getElementById(id).checked);
-            if (allChecked) {
-                document.getElementById('btn-confirm-pre').classList.remove('disabled');
-            } else {
-                document.getElementById('btn-confirm-pre').classList.add('disabled');
-            }
-        }
-
-        // --- WORKOUT ENGINE ---
-        let workoutQueue = [];
-        let currentStepIndex = 0;
-        let timerInterval;
-        let isRecovery = false;
-
-        function startWorkout() {
-            if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            showView('view-workout');
-            buildWorkoutQueue();
-            currentStepIndex = 0;
-            isRecovery = false;
-            runNextStep();
-        }
-
-        function startRecoverySession() {
-            if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-            showView('view-workout');
-            workoutQueue = [];
-            // 5 mins of reverse kegels
-            for(let i=0; i<30; i++) {
-                workoutQueue.push({ type: 'rest', duration: 10, main: "Inhala Profundo", sub: "Expande diafragma, empuja suave hacia abajo" });
-            }
-            currentStepIndex = 0;
-            isRecovery = true;
-            runNextStep();
-        }
-
-        function buildWorkoutQueue() {
-            workoutQueue = [];
-            // Prep step
-            workoutQueue.push({ type: 'rest', duration: 5, main: "Prepárate", sub: "Relaja todo el cuerpo" });
-
-            if (state.currentPhase === 1) {
-                // Step 1: Warmup 5 reps (2s con, 5s rest)
-                for(let i=0; i<5; i++) {
-                    workoutQueue.push({ type: 'contract', duration: 2, main: "Contracción Suave (30%)", sub: "Repetición " + (i+1) + "/5" });
-                    workoutQueue.push({ type: 'rest', duration: 5, main: "Relajación Total", sub: "Suelta por completo" });
-                }
-                // Step 2: Fast Twitch 10 reps (1s con, 2s rest)
-                for(let i=0; i<10; i++) {
-                    workoutQueue.push({ type: 'contract', duration: 1, main: "¡Contracción Explosiva!", sub: "Máxima fuerza - Rep " + (i+1) + "/10" });
-                    workoutQueue.push({ type: 'rest', duration: 2, main: "Relajación Inmediata", sub: "" });
-                }
-                // Step 3: Meta recovery 45s
-                workoutQueue.push({ type: 'rest', duration: 45, main: "Recuperación", sub: "Respiración diafragmática profunda" });
-                
-                // Step 4: Slow Twitch 2 sets x 10 reps (4s con, 8s rest)
-                for(let set=1; set<=2; set++) {
-                    for(let i=0; i<10; i++) {
-                        workoutQueue.push({ type: 'contract', duration: 4, main: `Serie ${set}: Contracción Gradual`, sub: "Fuerza submáxima - Rep " + (i+1) + "/10" });
-                        workoutQueue.push({ type: 'rest', duration: 8, main: "Relajación Profunda", sub: "Descanso obligatorio" });
-                    }
-                    if(set === 1) workoutQueue.push({ type: 'rest', duration: 30, main: "Descanso entre series", sub: "Relaja el abdomen" });
-                }
-            } else if (state.currentPhase === 2) {
-                // Phase 2: Isometric 2 sets x 10 reps (10s con, 15s rest)
-                for(let set=1; set<=2; set++) {
-                    for(let i=0; i<10; i++) {
-                        workoutQueue.push({ type: 'contract', duration: 10, main: `Serie ${set}: Tensión Isométrica`, sub: "Manten la fuerza constante - Rep " + (i+1) + "/10" });
-                        workoutQueue.push({ type: 'rest', duration: 15, main: "Relajación Total", sub: "Suelta por completo" });
-                    }
-                    if(set === 1) workoutQueue.push({ type: 'rest', duration: 45, main: "Descanso entre series", sub: "Relaja el cuerpo" });
-                }
-            } else {
-                // Phase 3: Dynamic Walking (2 minutes sustained)
-                workoutQueue.push({ type: 'contract', duration: 120, main: "Caminar Pélvico", sub: "Mantén el 50% de esfuerzo mientras caminas" });
-                workoutQueue.push({ type: 'rest', duration: 60, main: "Relajación Post-Actividad", sub: "Suelta y respira profundo" });
-            }
-        }
-
-        function runNextStep() {
-            if (currentStepIndex >= workoutQueue.length) {
-                finishWorkout();
-                return;
-            }
-
-            const step = workoutQueue[currentStepIndex];
-            document.getElementById('instruction-main').textContent = step.main;
-            document.getElementById('instruction-sub').textContent = step.sub;
-            
-            const circle = document.getElementById('timer-circle');
-            circle.className = 'timer-circle ' + step.type;
-            
-            if(currentStepIndex > 0) playBeep(step.type); // Don't beep on first prep
-
-            let timeLeft = step.duration;
-            document.getElementById('timer-display').textContent = timeLeft;
-            
-            // Progress bar
-            const progressFill = document.getElementById('workout-progress');
-            progressFill.style.width = ((currentStepIndex / workoutQueue.length) * 100) + '%';
-
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                document.getElementById('timer-display').textContent = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
-                    currentStepIndex++;
-                    runNextStep();
-                }
-            }, 1000);
-        }
-
-        function quitWorkout() {
-            clearInterval(timerInterval);
-            showView('view-dashboard');
-        }
-
-        function finishWorkout() {
-            clearInterval(timerInterval);
-            playBeep('end');
-            alert("¡Entrenamiento Completado!");
-            
-            if(!isRecovery) {
-                // Determine which session to mark
-                const hour = new Date().getHours();
-                if (hour < 12) state.sessionsToday.m = true;
-                else if (hour < 18) state.sessionsToday.a = true;
-                else state.sessionsToday.e = true;
-                
-                checkDailyReset();
-            }
-            
-            showView('view-dashboard');
-        }
-
-        // --- PROGRESSION QUIZ ---
-        const quizChecks = ['q1', 'q2', 'q3'];
-        quizChecks.forEach(id => {
-            document.getElementById(id).onchange = () => {
-                const all = quizChecks.every(q => document.getElementById(q).checked);
-                if(all) document.getElementById('btn-unlock').classList.remove('disabled');
-                else document.getElementById('btn-unlock').classList.add('disabled');
-            };
-        });
-
-        function unlockNextPhase() {
-            state.currentPhase++;
-            state.streak = 0; // Reset streak for next phase logic
-            saveState();
-            alert("¡Felicidades! Has desbloqueado la Fase " + state.currentPhase);
-            quizChecks.forEach(id => document.getElementById(id).checked = false);
-            showView('view-dashboard');
-        }
-
-        function skipProgression() {
-            // Wait 3 more days before asking again
-            state.streak = 10; 
-            saveState();
-            showView('view-dashboard');
-        }
-
-        // --- SECURITY MODULE ---
-        function reportPain() {
-            if(confirm("¿Estás seguro? Esto bloqueará los entrenamientos de fuerza por 48 horas para protegerte de un sobreentrenamiento.")) {
-                state.blockedUntil = new Date().getTime() + (48 * 60 * 60 * 1000);
-                saveState();
-            }
-        }
-
-        // SERVICE WORKER REGISTRATION
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js')
-            .then(() => console.log('Service Worker Registered'));
-        }
-
-        // BOOT
-        loadState();
-
-    </script>
+        </section>
+    </div>
+    <!-- Scripts -->
+    <script src="./js/store.js"></script>
+    <script src="./js/timer.js"></script>
+    <script src="./js/app.js"></script>
 </body>
 </html>
