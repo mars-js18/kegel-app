@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="Entrenador sencillo y discreto de suelo pélvico (PFMT) y Kegel Inverso.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Control Pélvico</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  <link rel="stylesheet" href="./style.css?v=3.1">
+</head>
+<body>
+  <!-- Banner de actualización de la PWA -->
+  <div id="update-banner" class="update-banner hidden" role="alert">
+    <span>Nueva versión disponible</span>
+    <button id="update-btn" class="btn btn-sm btn-primary">Actualizar</button>
+  </div>
+
+  <!-- Encabezado Discreto -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M12 8v8M8 12h8"/>
+        </svg>
+        <span class="brand-title">Control Pélvico</span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-sound-toggle" class="icon-btn" title="Activar/Desactivar Sonido" aria-label="Sonido">
+          <svg id="icon-sound-on" class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <svg id="icon-sound-off" class="svg-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+            <path d="M9 9l3 3M15 9l-6 6"></path>
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          </svg>
+        </button>
+        <button id="btn-haptic-toggle" class="icon-btn" title="Activar/Desactivar Vibración" aria-label="Vibración">
+          <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+            <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            <path d="M1 9h2M1 15h2M21 9h2M21 15h2"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Vistas Principales (SPA) -->
+  <main class="app-main">
+    <!-- PESTAÑA A: ENTRENADOR DE RUTINA (SIMPLIFICADO Y DIRECTO) -->
+    <section id="view-routine" class="tab-view active">
+      
+      <!-- Selector de Fase en Botones Directos -->
+      <div class="phase-tabs-container">
+        <div class="phase-tabs">
+          <button class="phase-tab-btn active" data-phase="1">Fase 1</button>
+          <button class="phase-tab-btn" data-phase="2">Fase 2</button>
+          <button class="phase-tab-btn" data-phase="3">Fase 3</button>
+          <button class="phase-tab-btn" data-phase="4">Fase 4</button>
+        </div>
+        <div id="phase-summary-text" class="phase-summary-text">
+          Fase 1: 4 días/sem • Duración: 9m 30s (3 series x 10 reps)
+        </div>
+      </div>
+
+      <!-- Alerta de postura para Fase 4 -->
+      <div id="posture-alert" class="alert-box alert-warning hidden">
+        <span>⚠️ <strong>Posición:</strong> Realiza esta fase <strong>de pie</strong> o <strong>sentado</strong>.</span>
+      </div>
+
+      <!-- Display del Temporizador Circular Gigante -->
+      <div class="timer-container">
+        <div class="timer-ring-wrapper">
+          <svg class="timer-svg" viewBox="0 0 280 280">
+            <circle class="timer-circle-bg" cx="140" cy="140" r="120" />
+            <circle id="timer-circle-progress" class="timer-circle-progress tension-mode" cx="140" cy="140" r="120" />
+          </svg>
+          <div class="timer-inner-content">
+            <span id="timer-state-badge" class="state-badge badge-tension">CONTRAE / KEGEL</span>
+            <span id="timer-countdown" class="countdown-display">05</span>
+            <span id="timer-sublabel" class="sublabel-display">Aprieta suave (50% fuerza)</span>
+          </div>
+        </div>
+
+        <!-- Métricas Claras de Repetición y Serie -->
+        <div class="metrics-grid">
+          <div class="metric-box">
+            <span class="metric-title">REPETICIÓN</span>
+            <span id="rep-counter" class="metric-num">1 de 10</span>
+            <span id="rep-subtext" class="metric-status">⚡ Contrayendo</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-title">SERIE</span>
+            <span id="set-counter" class="metric-num">1 de 3</span>
+            <span id="set-subtext" class="metric-status">Serie en curso</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botón Gigante de Acción Principal (1 Solo Botón) -->
+      <div class="main-action-panel">
+        <button id="btn-start-pause" class="btn-hero-action">
+          <span id="btn-hero-icon">▶</span>
+          <span id="btn-start-text">INICIAR RUTINA</span>
+        </button>
+
+        <!-- Botón Saltar Descanso (Aparece únicamente cuando está en descanso entre series) -->
+        <div id="rest-skip-container" class="rest-skip-container hidden">
+          <button id="btn-skip-rest" class="btn-skip-action">
+            ⏩ Saltar Descanso e Iniciar Serie Siguiente
+          </button>
+        </div>
+
+        <!-- Enlaces Rápidos de Navegación -->
+        <div class="action-sublinks">
+          <button id="btn-next-rep" class="sublink-btn">⏩ Siguiente Rep</button>
+          <button id="btn-next-set" class="sublink-btn">⏭️ Siguiente Serie</button>
+          <button id="btn-reset" class="sublink-btn text-muted">↺ Reiniciar</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA B: GUÍA CLÍNICA Y TÉCNICA -->
+    <section id="view-guide" class="tab-view hidden">
+      <div class="guide-container">
+        <h2 class="section-title">Guía Clínica y Técnica de Aislamiento</h2>
+        <p class="section-subtitle">Instrucciones fundamentales del entrenamiento neuromuscular (PFMT) y Kegel Inverso.</p>
+
+        <!-- Acordeón 1 -->
+        <details class="accordion-item" open>
+          <summary class="accordion-header">
+            <span class="accordion-title">1. Técnica de Aislamiento Muscular</span>
+            <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </summary>
+          <div class="accordion-content">
+            <ol class="step-list">
+              <li><strong>Postura Inicial:</strong> Acuéstate boca arriba con rodillas flexionadas y pies firmes en el suelo.</li>
+              <li><strong>Retroalimentación Táctil:</strong> Coloca dos dedos en el periné (entre escroto y ano).</li>
+              <li><strong>Visualización:</strong> Imagina acortar la base del pene hacia el hueso púbico y ascender suavemente el ano.</li>
+              <li><strong>Sin Co-Contracción:</strong> Mantén abdomen, glúteos y muslos totalmente relajados.</li>
+              <li><strong>Respiración:</strong> Inhala para expandir/relajar el periné; exhala para contraer.</li>
+            </ol>
+          </div>
+        </details>
+
+        <!-- Acordeón 2 -->
+        <details class="accordion-item">
+          <summary class="accordion-header">
+            <span class="accordion-title">2. El Concepto de Kegel Inverso</span>
+            <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </summary>
+          <div class="accordion-content">
+            <p class="paragraph">
+              El <strong>Kegel Inverso</strong> consiste en elongar y relajar activamente el músculo bulboesponjoso y el periné.
+            </p>
+            <div class="info-card">
+              <h4>¿Por qué es indispensable?</h4>
+              <p>Entrenar solo la contracción sin relajación provoca <strong>hipertonía muscular</strong>, que empeora la eyaculación precoz y puede causar dolor o disfunción eréctil. El Kegel Inverso restablece el tono simpático y relaja la zona.</p>
+            </div>
+            <p class="paragraph"><strong>Cómo hacerlo:</strong> Inhala inflando el abdomen y permite que el periné se expanda suavemente hacia afuera, como al iniciar la micción pero de forma muy delicada.</p>
+          </div>
+        </details>
+
+        <!-- Acordeón 3: Frecuencia y Duración -->
+        <details class="accordion-item">
+          <summary class="accordion-header">
+            <span class="accordion-title">3. Duración de Cada Rutina y Descanso</span>
+            <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </summary>
+          <div class="accordion-content">
+            <div class="table-responsive">
+              <table class="routine-table">
+                <thead>
+                  <tr>
+                    <th>Fase</th>
+                    <th>Frecuencia</th>
+                    <th>Estructura</th>
+                    <th>Duración Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Fase 1</strong><br><small>Semanas 1-4</small></td>
+                    <td>4 días/sem (alternos)</td>
+                    <td>3 series x 10 reps (5s/10s)</td>
+                    <td><strong class="highlight-time">9 min 30 s</strong></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Fase 2</strong><br><small>Semanas 5-8</small></td>
+                    <td>5 días/sem (Lun-Vie)</td>
+                    <td>3 series x 10 reps (10s/15s)</td>
+                    <td><strong class="highlight-time">15 min 30 s</strong></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Fase 3</strong><br><small>Semanas 9-12</small></td>
+                    <td>5 días/sem (Lun-Vie)</td>
+                    <td>3 series x (10 flicks + 5 sost.)</td>
+                    <td><strong class="highlight-time">11 min 15 s</strong></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Fase 4</strong><br><small>Semana 13+</small></td>
+                    <td>3 días/sem (Mantenimiento)</td>
+                    <td>2 series x 15 reps (10s/20s)</td>
+                    <td><strong class="highlight-time">17 min 00 s</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="info-card">
+              <h4>💡 El Descanso es Parte del Entrenamiento</h4>
+              <p>El suelo pélvico es un músculo pequeño. No entrenes todos los días sin descansar para evitar hipertonía crónica.</p>
+            </div>
+          </div>
+        </details>
+
+        <!-- Acordeón 4: Banderas Rojas -->
+        <details class="accordion-item">
+          <summary class="accordion-header danger-header">
+            <span class="accordion-title">4. Banderas Rojas (Seguridad Médica)</span>
+            <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </summary>
+          <div class="accordion-content">
+            <div class="alert-box alert-danger">
+              <p><strong>Suspende la rutina y consulta a un urólogo si presentas:</strong></p>
+            </div>
+            <ul class="danger-list">
+              <li>Dolor urente o punzante persistente en el periné o testículos.</li>
+              <li>Entumecimiento u hormigueo en la zona genital o anal.</li>
+              <li>Síndrome "Flácido y Duro" (Hard Flaccid).</li>
+              <li>Dificultad o esfuerzo severo para iniciar la micción.</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <!-- PESTAÑA C: REGISTRO DE PROGRESO -->
+    <section id="view-history" class="tab-view hidden">
+      <div class="history-container">
+        <h2 class="section-title">Registro de Progreso</h2>
+        <p class="section-subtitle">Seguimiento de consistencia y racha de entrenamientos.</p>
+
+        <!-- Tarjetas de Estadísticas -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span id="stat-streak" class="stat-number">0</span>
+            <span class="stat-label">Días de Racha 🔥</span>
+          </div>
+          <div class="stat-card">
+            <span id="stat-total" class="stat-number">0</span>
+            <span class="stat-label">Completados 🏆</span>
+          </div>
+          <div class="stat-card">
+            <span id="stat-month" class="stat-number">0</span>
+            <span class="stat-label">Este Mes 📅</span>
+          </div>
+        </div>
+
+        <!-- Matriz de Consistencia Visual -->
+        <div class="history-card">
+          <h3 class="card-title">Actividad de los Últimos 30 Días</h3>
+          <div id="activity-grid" class="activity-grid"></div>
+        </div>
+
+        <!-- Historial Reciente de Sesiones -->
+        <div class="history-card">
+          <div class="card-header-flex">
+            <h3 class="card-title">Sesiones Guardadas</h3>
+            <button id="btn-clear-history" class="text-btn text-danger">Borrar Historial</button>
+          </div>
+          <div id="history-list" class="history-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Barra de Navegación Inferior -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-target="view-routine">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <span class="nav-label">Entrenador</span>
+    </button>
+    <button class="nav-btn" data-target="view-guide">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+      </svg>
+      <span class="nav-label">Guía Clínica</span>
+    </button>
+    <button class="nav-btn" data-target="view-history">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+      </svg>
+      <span class="nav-label">Progreso</span>
+    </button>
+  </nav>
+
+  <!-- Modal de Finalización -->
+  <div id="completion-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-icon-wrapper">
+        <svg class="modal-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <h3 class="modal-title">¡Entrenamiento Completado!</h3>
+      <p class="modal-text">Has concluido exitosamente todas las series de hoy.</p>
+      <div id="modal-streak-badge" class="modal-badge">🔥 Racha Activa: 1 día</div>
+      <button id="btn-close-modal" class="btn btn-primary btn-block">Aceptar</button>
+    </div>
+  </div>
+
+  <script src="./app.js?v=3.1"></script>
+</body>
+</html>
