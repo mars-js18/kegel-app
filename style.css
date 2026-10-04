@@ -414,6 +414,7 @@ body > * {
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  flex: 1;
 }
 
 .metric-label {
@@ -423,10 +424,46 @@ body > * {
   letter-spacing: 0.08em;
 }
 
+.metric-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+.stepper-btn {
+  background: rgba(51, 65, 85, 0.45);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  line-height: 1;
+  padding: 0;
+  user-select: none;
+}
+
+.stepper-btn:hover, .stepper-btn:active {
+  background: var(--color-tension);
+  color: #ffffff;
+  border-color: var(--color-tension);
+  transform: scale(1.1);
+}
+
 .metric-value {
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-primary);
+  min-width: 60px;
+  text-align: center;
 }
 
 .metric-divider {

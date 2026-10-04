@@ -1,5 +1,5 @@
 /* ==========================================================================
-   CONTROL PÉLVICO PWA - LÓGICA PRINCIPAL (APP.JS)
+   CONTROL PÉLVICO PWA - LÓGICA PRINCIPAL (APP.JS v2.1)
    ========================================================================== */
 
 (function () {
@@ -82,7 +82,7 @@
     }
   };
 
-  // Circunferencia del círculo de progreso (r=120 -> 2 * PI * 120 ≈ 753.98)
+  // Circunferencia del círculo SVG (r=120 -> 2 * PI * 120 ≈ 753.98)
   const CIRCLE_CIRCUMFERENCE = 753.98;
 
   // --------------------------------------------------------------------------
@@ -98,7 +98,7 @@
   let currentRep = 1;
   let timeRemaining = 0;
   let totalPhaseTime = 0;
-  let mixedSubState = "QUICK"; // Para Fase 3: "QUICK" o "SUSTAINED"
+  let mixedSubState = "QUICK"; // "QUICK" o "SUSTAINED" (en Fase 3)
 
   // Preferencias
   let isSoundEnabled = true;
@@ -125,10 +125,16 @@
     stateBadge: document.getElementById('timer-state-badge'),
     countdown: document.getElementById('timer-countdown'),
     sublabel: document.getElementById('timer-sublabel'),
+    
+    // Contadores de Repetición y Serie
     repCounter: document.getElementById('rep-counter'),
     setCounter: document.getElementById('set-counter'),
     repSubtext: document.getElementById('rep-subtext'),
     setSubtext: document.getElementById('set-subtext'),
+    btnRepMinus: document.getElementById('btn-rep-minus'),
+    btnRepPlus: document.getElementById('btn-rep-plus'),
+    btnSetMinus: document.getElementById('btn-set-minus'),
+    btnSetPlus: document.getElementById('btn-set-plus'),
 
     // Controls
     btnStartPause: document.getElementById('btn-start-pause'),
@@ -175,7 +181,7 @@
   }
 
   // --------------------------------------------------------------------------
-  // 5. MANEJO DE WEB AUDIO API & VIBRACIÓN (SONIDO POTENTE Y CLARO)
+  // 5. MANEJO DE WEB AUDIO API & VIBRACIÓN (SONIDO POTENTE Y AUDIBLE)
   // --------------------------------------------------------------------------
   function getAudioContext() {
     if (!audioCtx) {
@@ -301,19 +307,23 @@
   // --------------------------------------------------------------------------
   function updatePhaseUI() {
     const config = PHASES_CONFIG[currentPhaseId];
-    DOM.phaseInfo.innerHTML = `
-      <div class="phase-meta">
-        <span class="freq-badge">${config.daysPerWeek}</span>
-        <span class="duration-badge">⏱️ Duración: ${config.totalDurationFormatted}</span>
-      </div>
-      <div class="duration-detail">⚡ Ejercicio activo: ${config.activeDurationFormatted} | ☕ Descanso: ${config.restDurationFormatted}</div>
-      <div class="schedule-tip">📅 <strong>Esquema:</strong> ${config.scheduleSuggestion}</div>
-    `;
+    if (DOM.phaseInfo) {
+      DOM.phaseInfo.innerHTML = `
+        <div class="phase-meta">
+          <span class="freq-badge">${config.daysPerWeek}</span>
+          <span class="duration-badge">⏱️ Duración: ${config.totalDurationFormatted}</span>
+        </div>
+        <div class="duration-detail">⚡ Ejercicio activo: ${config.activeDurationFormatted} | ☕ Descanso: ${config.restDurationFormatted}</div>
+        <div class="schedule-tip">📅 <strong>Esquema:</strong> ${config.scheduleSuggestion}</div>
+      `;
+    }
 
-    if (config.postureWarning) {
-      DOM.postureAlert.classList.remove('hidden');
-    } else {
-      DOM.postureAlert.classList.add('hidden');
+    if (DOM.postureAlert) {
+      if (config.postureWarning) {
+        DOM.postureAlert.classList.remove('hidden');
+      } else {
+        DOM.postureAlert.classList.add('hidden');
+      }
     }
 
     resetTimerState();
@@ -337,9 +347,9 @@
     updateCountersUI();
     setCircleProgress(1);
 
-    DOM.btnStartText.textContent = "Iniciar Rutina";
-    DOM.iconPlay.classList.remove('hidden');
-    DOM.iconPause.classList.add('hidden');
+    if (DOM.btnStartText) DOM.btnStartText.textContent = "Iniciar Rutina";
+    if (DOM.iconPlay) DOM.iconPlay.classList.remove('hidden');
+    if (DOM.iconPause) DOM.iconPause.classList.add('hidden');
 
     if (DOM.btnSkipRest) {
       DOM.btnSkipRest.classList.add('hidden');
@@ -356,7 +366,7 @@
     } else if (state === "RELAXATION") {
       return "🌿 RELAJA / KEGEL INVERSO (Expande el periné)";
     } else if (state === "REST") {
-      return `☕ DESCANSO ENTRE SERIES (Próxima: Serie ${currentSet + 1})`;
+      return `☕ DESCANSO ENTRE SERIES (Próxima: Serie ${currentSet + 1} de ${config.totalSets})`;
     }
     return "";
   }
@@ -379,9 +389,9 @@
       timerState = previousTimerState || "TENSION";
     }
 
-    DOM.btnStartText.textContent = "Pausar";
-    DOM.iconPlay.classList.add('hidden');
-    DOM.iconPause.classList.remove('hidden');
+    if (DOM.btnStartText) DOM.btnStartText.textContent = "Pausar";
+    if (DOM.iconPlay) DOM.iconPlay.classList.add('hidden');
+    if (DOM.iconPause) DOM.iconPause.classList.remove('hidden');
 
     if (timerInterval) clearInterval(timerInterval);
 
@@ -394,10 +404,10 @@
     clearInterval(timerInterval);
     timerInterval = null;
 
-    DOM.btnStartText.textContent = "Reanudar";
-    DOM.iconPlay.classList.remove('hidden');
-    DOM.iconPause.classList.add('hidden');
-    DOM.sublabel.textContent = "Pausado - Presiona Reanudar";
+    if (DOM.btnStartText) DOM.btnStartText.textContent = "Reanudar";
+    if (DOM.iconPlay) DOM.iconPlay.classList.remove('hidden');
+    if (DOM.iconPause) DOM.iconPause.classList.add('hidden');
+    if (DOM.sublabel) DOM.sublabel.textContent = "Pausado - Presiona Reanudar";
   }
 
   function tick() {
@@ -427,7 +437,7 @@
       setupStateTransition("RELAXATION");
 
     } else if (timerState === "RELAXATION") {
-      // Se completó la relajación de la repetición actual
+      // Se completó la relajación de la repetición actual -> Avanza al número siguiente
       if (config.type === "mixed") {
         if (mixedSubState === "QUICK") {
           if (currentRep < config.quickFlicksCount) {
@@ -481,6 +491,7 @@
       setupStateTransition("TENSION");
     }
 
+    updateCountersUI();
     updateTimerUI();
   }
 
@@ -499,7 +510,81 @@
     }
   }
 
-  // Navegación manual: Siguiente Repetición / Paso
+  // --------------------------------------------------------------------------
+  // CONTROLES MANUALES DIRECTOS: +/- REPS Y +/- SERIES
+  // --------------------------------------------------------------------------
+  function incrementRep() {
+    getAudioContext();
+    const config = PHASES_CONFIG[currentPhaseId];
+    const maxReps = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickFlicksCount : config.sustainedCount) : config.repsPerSet;
+
+    if (currentRep < maxReps) {
+      currentRep++;
+    } else if (currentSet < config.totalSets) {
+      currentSet++;
+      currentRep = 1;
+    }
+
+    timeRemaining = (timerState === "RELAXATION") ? config.relaxTime : config.tensionTime;
+    totalPhaseTime = timeRemaining;
+    updateCountersUI();
+    updateTimerUI();
+    playSound('tension');
+  }
+
+  function decrementRep() {
+    getAudioContext();
+    const config = PHASES_CONFIG[currentPhaseId];
+
+    if (currentRep > 1) {
+      currentRep--;
+    } else if (currentSet > 1) {
+      currentSet--;
+      currentRep = (config.type === "mixed") ? config.sustainedCount : config.repsPerSet;
+    }
+
+    timeRemaining = (timerState === "RELAXATION") ? config.relaxTime : config.tensionTime;
+    totalPhaseTime = timeRemaining;
+    updateCountersUI();
+    updateTimerUI();
+  }
+
+  function incrementSet() {
+    getAudioContext();
+    const config = PHASES_CONFIG[currentPhaseId];
+
+    if (currentSet < config.totalSets) {
+      currentSet++;
+      currentRep = 1;
+      timerState = "TENSION";
+      timeRemaining = config.tensionTime;
+      totalPhaseTime = timeRemaining;
+      setupStateTransition("TENSION");
+    }
+
+    updateCountersUI();
+    updateTimerUI();
+    playSound('tension');
+  }
+
+  function decrementSet() {
+    getAudioContext();
+    const config = PHASES_CONFIG[currentPhaseId];
+
+    if (currentSet > 1) {
+      currentSet--;
+      currentRep = 1;
+      timerState = "TENSION";
+      timeRemaining = config.tensionTime;
+      totalPhaseTime = timeRemaining;
+      setupStateTransition("TENSION");
+    }
+
+    updateCountersUI();
+    updateTimerUI();
+  }
+
+  // Navegación manual: Siguiente Repetición o Paso
   function nextRep() {
     getAudioContext();
     const config = PHASES_CONFIG[currentPhaseId];
@@ -512,49 +597,23 @@
     if (timerState === "TENSION") {
       // Salta a la relajación de la misma repetición
       timerState = "RELAXATION";
-      timeRemaining = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickRelaxTime : config.sustainedRelaxTime) : config.relaxTime;
+      if (config.type === "mixed") {
+        timeRemaining = (mixedSubState === "QUICK") ? config.quickRelaxTime : config.sustainedRelaxTime;
+      } else {
+        timeRemaining = config.relaxTime;
+      }
       totalPhaseTime = timeRemaining;
       setupStateTransition("RELAXATION");
     } else {
-      // Salta a la siguiente repetición o descanso
-      if (config.type === "mixed") {
-        if (mixedSubState === "QUICK") {
-          if (currentRep < config.quickFlicksCount) {
-            currentRep++;
-            timerState = "TENSION";
-            timeRemaining = config.quickTensionTime;
-          } else {
-            mixedSubState = "SUSTAINED";
-            currentRep = 1;
-            timerState = "TENSION";
-            timeRemaining = config.sustainedTensionTime;
-          }
-        } else {
-          if (currentRep < config.sustainedCount) {
-            currentRep++;
-            timerState = "TENSION";
-            timeRemaining = config.sustainedTensionTime;
-          } else {
-            checkSetCompletion();
-            updateTimerUI();
-            return;
-          }
-        }
-      } else {
-        if (currentRep < config.repsPerSet) {
-          currentRep++;
-          timerState = "TENSION";
-          timeRemaining = config.tensionTime;
-        } else {
-          checkSetCompletion();
-          updateTimerUI();
-          return;
-        }
-      }
+      // Salta a la siguiente repetición
+      incrementRep();
+      timerState = "TENSION";
+      timeRemaining = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickTensionTime : config.sustainedTensionTime) : config.tensionTime;
       totalPhaseTime = timeRemaining;
       setupStateTransition("TENSION");
     }
 
+    updateCountersUI();
     updateTimerUI();
   }
 
@@ -569,21 +628,15 @@
       timeRemaining = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickTensionTime : config.sustainedTensionTime) : config.tensionTime;
       totalPhaseTime = timeRemaining;
       setupStateTransition("TENSION");
-    } else if (timerState === "TENSION" && currentRep > 1) {
-      // Regresa a la repetición anterior
-      currentRep--;
-      timeRemaining = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickTensionTime : config.sustainedTensionTime) : config.tensionTime;
-      totalPhaseTime = timeRemaining;
-      setupStateTransition("TENSION");
-    } else if (timerState === "REST") {
-      // Vuelve a la última repetición de la serie actual
-      currentRep = (config.type === "mixed") ? config.sustainedCount : config.repsPerSet;
+    } else {
+      decrementRep();
       timerState = "TENSION";
-      timeRemaining = (config.type === "mixed") ? config.sustainedTensionTime : config.tensionTime;
+      timeRemaining = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickTensionTime : config.sustainedTensionTime) : config.tensionTime;
       totalPhaseTime = timeRemaining;
       setupStateTransition("TENSION");
     }
 
+    updateCountersUI();
     updateTimerUI();
   }
 
@@ -591,13 +644,16 @@
   function skipRest() {
     getAudioContext();
     const config = PHASES_CONFIG[currentPhaseId];
-    currentSet++;
+    if (currentSet < config.totalSets) {
+      currentSet++;
+    }
     currentRep = 1;
     mixedSubState = "QUICK";
     timerState = "TENSION";
     timeRemaining = (config.type === "mixed") ? config.quickTensionTime : config.tensionTime;
     totalPhaseTime = timeRemaining;
     setupStateTransition("TENSION");
+    updateCountersUI();
     updateTimerUI();
   }
 
@@ -625,50 +681,69 @@
   }
 
   function updateTimerUI() {
-    DOM.countdown.textContent = timeRemaining < 10 ? `0${timeRemaining}` : timeRemaining;
+    if (DOM.countdown) {
+      DOM.countdown.textContent = timeRemaining < 10 ? `0${timeRemaining}` : timeRemaining;
+    }
     const ratio = totalPhaseTime > 0 ? timeRemaining / totalPhaseTime : 0;
     setCircleProgress(ratio);
+
+    // Actualizar subtexto de descanso en tiempo real si está en descanso
+    if (timerState === "REST" && DOM.repSubtext) {
+      DOM.repSubtext.textContent = `Descanso (${timeRemaining}s)`;
+    }
   }
 
   function updateTimerDisplay(title, modeClass, badgeClass, sublabel) {
-    DOM.stateBadge.textContent = title;
-    DOM.stateBadge.className = `state-badge ${badgeClass}`;
-    DOM.circleProgress.className = `timer-circle-progress ${modeClass}`;
-    DOM.sublabel.textContent = sublabel;
-    DOM.countdown.textContent = timeRemaining < 10 ? `0${timeRemaining}` : timeRemaining;
+    if (DOM.stateBadge) {
+      DOM.stateBadge.textContent = title;
+      DOM.stateBadge.className = `state-badge ${badgeClass}`;
+    }
+    if (DOM.circleProgress) {
+      DOM.circleProgress.className = `timer-circle-progress ${modeClass}`;
+    }
+    if (DOM.sublabel) {
+      DOM.sublabel.textContent = sublabel;
+    }
+    if (DOM.countdown) {
+      DOM.countdown.textContent = timeRemaining < 10 ? `0${timeRemaining}` : timeRemaining;
+    }
   }
 
   function setCircleProgress(ratio) {
+    if (!DOM.circleProgress) return;
     const offset = CIRCLE_CIRCUMFERENCE * (1 - Math.max(0, Math.min(1, ratio)));
     DOM.circleProgress.style.strokeDashoffset = offset;
   }
 
   function updateCountersUI() {
     const config = PHASES_CONFIG[currentPhaseId];
-    let totalRepsDisplay = config.repsPerSet;
+    if (!config) return;
 
+    let totalRepsDisplay = config.repsPerSet;
     if (config.type === "mixed") {
       totalRepsDisplay = (mixedSubState === "QUICK") ? `${config.quickFlicksCount} (F)` : `${config.sustainedCount} (S)`;
     }
 
-    DOM.repCounter.textContent = `${currentRep} / ${totalRepsDisplay}`;
+    if (DOM.repCounter) {
+      DOM.repCounter.textContent = `${currentRep} / ${totalRepsDisplay}`;
+    }
+
+    if (DOM.setCounter) {
+      DOM.setCounter.textContent = `${currentSet} / ${config.totalSets}`;
+    }
 
     if (timerState === "REST") {
-      DOM.setCounter.textContent = `${currentSet} / ${config.totalSets}`;
-      if (DOM.repSubtext) DOM.repSubtext.textContent = "Descanso entre series";
-      if (DOM.setSubtext) DOM.setSubtext.textContent = `Serie ${currentSet} terminada`;
+      if (DOM.repSubtext) DOM.repSubtext.textContent = `Descanso (${timeRemaining}s)`;
+      if (DOM.setSubtext) DOM.setSubtext.textContent = `Serie ${currentSet} lista → Próx: ${currentSet + 1}`;
     } else if (timerState === "TENSION") {
-      DOM.setCounter.textContent = `${currentSet} / ${config.totalSets}`;
-      if (DOM.repSubtext) DOM.repSubtext.textContent = "⚡ Contrayendo";
-      if (DOM.setSubtext) DOM.setSubtext.textContent = "En curso";
+      if (DOM.repSubtext) DOM.repSubtext.textContent = `⚡ Contrayendo (${currentRep}/${totalRepsDisplay})`;
+      if (DOM.setSubtext) DOM.setSubtext.textContent = `Serie ${currentSet} de ${config.totalSets}`;
     } else if (timerState === "RELAXATION") {
-      DOM.setCounter.textContent = `${currentSet} / ${config.totalSets}`;
-      if (DOM.repSubtext) DOM.repSubtext.textContent = "🌿 Kegel Inverso";
-      if (DOM.setSubtext) DOM.setSubtext.textContent = "En curso";
+      if (DOM.repSubtext) DOM.repSubtext.textContent = `🌿 Kegel Inverso (${currentRep}/${totalRepsDisplay})`;
+      if (DOM.setSubtext) DOM.setSubtext.textContent = `Serie ${currentSet} de ${config.totalSets}`;
     } else {
-      DOM.setCounter.textContent = `${currentSet} / ${config.totalSets}`;
       if (DOM.repSubtext) DOM.repSubtext.textContent = "Listo para iniciar";
-      if (DOM.setSubtext) DOM.setSubtext.textContent = "Listo";
+      if (DOM.setSubtext) DOM.setSubtext.textContent = "Listo para iniciar";
     }
   }
 
@@ -682,8 +757,12 @@
 
     const streak = saveCompletedSession(currentPhaseId);
 
-    DOM.modalStreakBadge.textContent = `🔥 Racha Activa: ${streak} ${streak === 1 ? 'día' : 'días'}`;
-    DOM.completionModal.classList.remove('hidden');
+    if (DOM.modalStreakBadge) {
+      DOM.modalStreakBadge.textContent = `🔥 Racha Activa: ${streak} ${streak === 1 ? 'día' : 'días'}`;
+    }
+    if (DOM.completionModal) {
+      DOM.completionModal.classList.remove('hidden');
+    }
 
     resetTimerState();
     loadAndRenderHistory();
@@ -768,15 +847,16 @@
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     }).length;
 
-    DOM.statStreak.textContent = streak;
-    DOM.statTotal.textContent = total;
-    DOM.statMonth.textContent = monthCount;
+    if (DOM.statStreak) DOM.statStreak.textContent = streak;
+    if (DOM.statTotal) DOM.statTotal.textContent = total;
+    if (DOM.statMonth) DOM.statMonth.textContent = monthCount;
 
     renderActivityGrid(history);
     renderHistoryList(history);
   }
 
   function renderActivityGrid(history) {
+    if (!DOM.activityGrid) return;
     DOM.activityGrid.innerHTML = '';
     const activeDatesSet = new Set(history.map(item => item.dateStr));
 
@@ -797,6 +877,7 @@
   }
 
   function renderHistoryList(history) {
+    if (!DOM.historyList) return;
     DOM.historyList.innerHTML = '';
     if (!history || history.length === 0) {
       DOM.historyList.innerHTML = '<div class="empty-history">No hay sesiones registradas aún. ¡Completa tu primera rutina hoy!</div>';
@@ -858,15 +939,19 @@
   }
 
   function updateSettingsUI() {
-    if (isSoundEnabled) {
-      DOM.iconSoundOn.classList.remove('hidden');
-      DOM.iconSoundOff.classList.add('hidden');
-    } else {
-      DOM.iconSoundOn.classList.add('hidden');
-      DOM.iconSoundOff.classList.remove('hidden');
+    if (DOM.iconSoundOn && DOM.iconSoundOff) {
+      if (isSoundEnabled) {
+        DOM.iconSoundOn.classList.remove('hidden');
+        DOM.iconSoundOff.classList.add('hidden');
+      } else {
+        DOM.iconSoundOn.classList.add('hidden');
+        DOM.iconSoundOff.classList.remove('hidden');
+      }
     }
 
-    DOM.btnHapticToggle.style.opacity = isHapticEnabled ? '1' : '0.4';
+    if (DOM.btnHapticToggle) {
+      DOM.btnHapticToggle.style.opacity = isHapticEnabled ? '1' : '0.4';
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -892,40 +977,66 @@
     });
 
     // Selector de Fase
-    DOM.phaseSelect.addEventListener('change', (e) => {
-      currentPhaseId = parseInt(e.target.value, 10);
-      updatePhaseUI();
-    });
+    if (DOM.phaseSelect) {
+      DOM.phaseSelect.addEventListener('change', (e) => {
+        currentPhaseId = parseInt(e.target.value, 10);
+        updatePhaseUI();
+      });
+    }
 
     // Controles Principales
-    DOM.btnStartPause.addEventListener('click', toggleStartPause);
-    DOM.btnReset.addEventListener('click', resetTimerState);
+    if (DOM.btnStartPause) DOM.btnStartPause.addEventListener('click', toggleStartPause);
+    if (DOM.btnReset) DOM.btnReset.addEventListener('click', resetTimerState);
 
     // Controles Secundarios de Navegación Manual
     if (DOM.btnPrevRep) DOM.btnPrevRep.addEventListener('click', prevRep);
     if (DOM.btnNextRep) DOM.btnNextRep.addEventListener('click', nextRep);
     if (DOM.btnSkipRest) DOM.btnSkipRest.addEventListener('click', skipRest);
 
-    // Toggles de Sonido y Háptica
-    DOM.btnSoundToggle.addEventListener('click', () => {
-      isSoundEnabled = !isSoundEnabled;
-      saveSettings();
-      if (isSoundEnabled) playSound('tension');
-    });
+    // Botones Stepper directos (+ y -) en Repetición y Serie
+    if (DOM.btnRepPlus) DOM.btnRepPlus.addEventListener('click', incrementRep);
+    if (DOM.btnRepMinus) DOM.btnRepMinus.addEventListener('click', decrementRep);
+    if (DOM.btnSetPlus) DOM.btnSetPlus.addEventListener('click', incrementSet);
+    if (DOM.btnSetMinus) DOM.btnSetMinus.addEventListener('click', decrementSet);
 
-    DOM.btnHapticToggle.addEventListener('click', () => {
-      isHapticEnabled = !isHapticEnabled;
-      saveSettings();
-      if (isHapticEnabled) triggerHaptic([100]);
-    });
+    // Tocar directamente los números también avanza
+    if (DOM.repCounter) {
+      DOM.repCounter.style.cursor = 'pointer';
+      DOM.repCounter.addEventListener('click', incrementRep);
+    }
+    if (DOM.setCounter) {
+      DOM.setCounter.style.cursor = 'pointer';
+      DOM.setCounter.addEventListener('click', incrementSet);
+    }
+
+    // Toggles de Sonido y Háptica
+    if (DOM.btnSoundToggle) {
+      DOM.btnSoundToggle.addEventListener('click', () => {
+        isSoundEnabled = !isSoundEnabled;
+        saveSettings();
+        if (isSoundEnabled) playSound('tension');
+      });
+    }
+
+    if (DOM.btnHapticToggle) {
+      DOM.btnHapticToggle.addEventListener('click', () => {
+        isHapticEnabled = !isHapticEnabled;
+        saveSettings();
+        if (isHapticEnabled) triggerHaptic([100]);
+      });
+    }
 
     // Modal
-    DOM.btnCloseModal.addEventListener('click', () => {
-      DOM.completionModal.classList.add('hidden');
-    });
+    if (DOM.btnCloseModal) {
+      DOM.btnCloseModal.addEventListener('click', () => {
+        if (DOM.completionModal) DOM.completionModal.classList.add('hidden');
+      });
+    }
 
     // Borrar Historial
-    DOM.btnClearHistory.addEventListener('click', clearHistory);
+    if (DOM.btnClearHistory) {
+      DOM.btnClearHistory.addEventListener('click', clearHistory);
+    }
   }
 
   // --------------------------------------------------------------------------

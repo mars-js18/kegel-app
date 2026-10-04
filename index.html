@@ -12,7 +12,7 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/svg+xml" href="./assets/icon.svg">
   <link rel="apple-touch-icon" href="./assets/icon-192.png">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=2.1">
 </head>
 <body>
   <!-- Banner de actualización de la PWA -->
@@ -107,17 +107,25 @@
           </div>
         </div>
 
-        <!-- Indicadores de Serie y Repetición -->
+        <!-- Indicadores de Serie y Repetición con Controles Rápidos -->
         <div class="workout-metrics">
           <div class="metric-card">
             <span class="metric-label">REPETICIÓN</span>
-            <span id="rep-counter" class="metric-value">1 / 10</span>
-            <span id="rep-subtext" class="metric-subtext">Contracción</span>
+            <div class="metric-stepper">
+              <button id="btn-rep-minus" class="stepper-btn" title="Repetición anterior" aria-label="Menos repetición">−</button>
+              <span id="rep-counter" class="metric-value">1 / 10</span>
+              <button id="btn-rep-plus" class="stepper-btn" title="Siguiente repetición" aria-label="Más repetición">+</button>
+            </div>
+            <span id="rep-subtext" class="metric-subtext">⚡ Contracción</span>
           </div>
           <div class="metric-divider"></div>
           <div class="metric-card">
             <span class="metric-label">SERIE</span>
-            <span id="set-counter" class="metric-value">1 / 3</span>
+            <div class="metric-stepper">
+              <button id="btn-set-minus" class="stepper-btn" title="Serie anterior" aria-label="Menos serie">−</button>
+              <span id="set-counter" class="metric-value">1 / 3</span>
+              <button id="btn-set-plus" class="stepper-btn" title="Siguiente serie" aria-label="Más serie">+</button>
+            </div>
             <span id="set-subtext" class="metric-subtext">Serie en curso</span>
           </div>
         </div>
@@ -423,6 +431,6 @@
     </div>
   </div>
 
-  <script src="./app.js"></script>
+  <script src="./app.js?v=2.1"></script>
 </body>
 </html>

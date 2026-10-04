@@ -1,9 +1,9 @@
 /* ==========================================================================
    CONTROL PÉLVICO PWA - SERVICE WORKER (SW.JS)
-   Estrategia Offline-First con Actualización Automática Inmediata
+   Estrategia Network-First con Fallback en Caché (Actualización Garantizada)
    ========================================================================== */
 
-const CACHE_NAME = 'control-pelvico-v1.1.0';
+const CACHE_NAME = 'control-pelvico-v2.1.0';
 
 // Recursos estáticos indispensables para precargar
 const PRECACHE_ASSETS = [
@@ -16,23 +16,16 @@ const PRECACHE_ASSETS = [
 ];
 
 // --------------------------------------------------------------------------
-// 1. EVENTO INSTALL: Precargar recursos y omitir espera de activación
+// 1. EVENTO INSTALL: Precargar recursos y forzar activación inmediata
 // --------------------------------------------------------------------------
 self.addEventListener('install', (event) => {
   console.log('[SW] Instalando nuevo Service Worker:', CACHE_NAME);
-
-  // Forzar activación inmediata sin esperar a que la pestaña actual se cierre
   self.skipWaiting();
 
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[SW] Precargando recursos estáticos...');
-        return cache.addAll(PRECACHE_ASSETS);
-      })
-      .catch((err) => {
-        console.warn('[SW] Error en addAll durante precarga:', err);
-      })
+      .then((cache) => cache.addAll(PRECACHE_ASSETS))
+      .catch((err) => console.warn('[SW] Error en precarga:', err))
   );
 });
 
@@ -44,10 +37,7 @@ self.addEventListener('activate', (event) => {
 
   event.waitUntil(
     Promise.all([
-      // Tomar el control de todas las pestañas abiertas inmediatamente
       self.clients.claim(),
-
-      // Eliminar cachés previas desactualizadas
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cache) => {
@@ -63,54 +53,70 @@ self.addEventListener('activate', (event) => {
 });
 
 // --------------------------------------------------------------------------
-// 3. ESTRATEGIA DE ESTRATEGIA DE ESTRATEGIAS: Cache-First con Fallback a Red
+// 3. ESTRATEGIA NETWORK-FIRST (Primero Red, Fallback a Caché)
 // --------------------------------------------------------------------------
 self.addEventListener('fetch', (event) => {
-  // Ignorar peticiones no HTTP/HTTPS o de extensiones
   if (!event.request.url.startsWith('http')) return;
 
+  // Para documentos HTML y scripts JS: Network-First garantizado para que las actualizaciones se vean de inmediato
+  const isHtmlOrJs = event.request.mode === 'navigate' || 
+                     event.request.destination === 'document' || 
+                     event.request.destination === 'script' ||
+                     event.request.url.includes('.js') || 
+                     event.request.url.includes('.html');
+
+  if (isHtmlOrJs) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Si no hay conexión, responder con la caché
+          return caches.match(event.request).then((cached) => {
+            return cached || caches.match('./index.html') || caches.match('./');
+          });
+        })
+    );
+    return;
+  }
+
+  // Para otros activos (imágenes, CSS, fuentes): Cache-First con actualización de fondo
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Retornar de la caché inmediatamente y actualizar en segundo plano (Stale-While-Revalidate)
         fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, networkResponse.clone());
             });
           }
-        }).catch(() => {
-          /* Red no disponible; ignora de forma segura */
-        });
-
+        }).catch(() => {});
         return cachedResponse;
       }
 
-      // Si no está en caché, buscar en la red
       return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        if (!networkResponse || networkResponse.status !== 200) {
           return networkResponse;
         }
-
-        // Clonar y guardar en caché la nueva respuesta
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseToCache);
         });
-
         return networkResponse;
-      }).catch(() => {
-        // Si no hay red y se busca navegación HTML, responder con index.html precargado
-        if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
-          return caches.match('./index.html') || caches.match('./');
-        }
       });
     })
   );
 });
 
 // --------------------------------------------------------------------------
-// 4. ESCUCHAR MENSAJES PARA FORZAR SKIP_WAITING
+// 4. FORZAR ACTIVACIÓN ANTE MENSAJE SKIP_WAITING
 // --------------------------------------------------------------------------
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
