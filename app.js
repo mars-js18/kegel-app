@@ -171,14 +171,18 @@
   // 5. AUDIO POTENTE & VIBRACIÓN ANDROID (SIN VOZ)
   // --------------------------------------------------------------------------
   function getAudioContext() {
-    if (!audioCtx) {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      if (AudioContextClass) {
-        audioCtx = new AudioContextClass();
+    try {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
       }
-    }
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+    } catch (e) {
+      console.warn("Audio Context init error:", e);
     }
     return audioCtx;
   }
@@ -371,10 +375,9 @@
       timeRemaining = (config.type === "mixed") ? config.quickTensionTime : config.tensionTime;
       totalPhaseTime = timeRemaining;
 
-      // ¡RESPUESTA INMEDIATA a 0ms!: Sonido, vibración y display visual al instante
-      playSound('tension');
-      triggerHaptic([140, 50, 140]);
       updateTimerDisplay("CONTRAE / KEGEL", "tension-mode", "badge-tension", getSublabelForState("TENSION"));
+      try { playSound('tension'); } catch (e) {}
+      try { triggerHaptic([140, 50, 140]); } catch (e) {}
     } else if (timerState === "PAUSED") {
       timerState = previousTimerState || "TENSION";
     }
@@ -430,8 +433,8 @@
       }
       totalPhaseTime = timeRemaining;
 
-      playSound('relax');
-      triggerHaptic([70, 70, 70]);
+      try { playSound('relax'); } catch (e) {}
+      try { triggerHaptic([70, 70, 70]); } catch (e) {}
       updateTimerDisplay("RELAJA / KEGEL INVERSO", "relax-mode", "badge-relax", getSublabelForState("RELAXATION"));
       if (DOM.restSkipContainer) DOM.restSkipContainer.classList.add('hidden');
 
@@ -486,8 +489,8 @@
     timeRemaining = duration;
     totalPhaseTime = timeRemaining;
 
-    playSound('tension');
-    triggerHaptic([140, 50, 140]);
+    try { playSound('tension'); } catch (e) {}
+    try { triggerHaptic([140, 50, 140]); } catch (e) {}
     updateTimerDisplay("CONTRAE / KEGEL", "tension-mode", "badge-tension", getSublabelForState("TENSION"));
     if (DOM.restSkipContainer) DOM.restSkipContainer.classList.add('hidden');
   }
@@ -501,8 +504,8 @@
       timeRemaining = config.restBetweenSets;
       totalPhaseTime = timeRemaining;
 
-      playSound('rest');
-      triggerHaptic([200, 100, 200]);
+      try { playSound('rest'); } catch (e) {}
+      try { triggerHaptic([200, 100, 200]); } catch (e) {}
       updateTimerDisplay("DESCANSO", "rest-mode", "badge-rest", `Descanso entre series • Próxima: Serie ${currentSet + 1} de ${config.totalSets}`);
 
       // Mostrar botón gigante para saltar descanso si el usuario no quiere esperar
@@ -612,7 +615,7 @@
       DOM.stateBadge.className = `state-badge ${badgeClass}`;
     }
     if (DOM.circleProgress) {
-      DOM.circleProgress.className = `timer-circle-progress ${modeClass}`;
+      DOM.circleProgress.setAttribute('class', `timer-circle-progress ${modeClass}`);
     }
     if (DOM.sublabel) {
       DOM.sublabel.textContent = sublabel;
@@ -964,7 +967,8 @@
 
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
+      // Solo recargar automáticamente si la app está inactiva para no interrumpir el ejercicio
+      if (!refreshing && timerState === "IDLE") {
         refreshing = true;
         window.location.reload();
       }
