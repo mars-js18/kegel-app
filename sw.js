@@ -3,7 +3,7 @@
    Estrategia Network-First con Fallback en Caché (Actualización Garantizada)
    ========================================================================== */
 
-const CACHE_NAME = 'control-pelvico-v2.1.0';
+const CACHE_NAME = 'control-pelvico-v3.0.0';
 
 // Recursos estáticos indispensables para precargar
 const PRECACHE_ASSETS = [

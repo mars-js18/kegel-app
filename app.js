@@ -1,19 +1,21 @@
 /* ==========================================================================
-   CONTROL PÉLVICO PWA - LÓGICA PRINCIPAL (APP.JS v2.1)
+   CONTROL PÉLVICO PWA - LÓGICA PRINCIPAL (APP.JS v3.0)
+   1-Click Ultra Simple • Feedback Inmediato (0ms) • Avanza Reps & Series
    ========================================================================== */
 
 (function () {
   'use strict';
 
   // --------------------------------------------------------------------------
-  // 1. CONFIGURACIÓN DE FASES DEL PROGRAMA (PFMT & KEGEL INVERSO)
+  // 1. CONFIGURACIÓN CLÍNICA DE LAS FASES DEL PROGRAMA (PFMT)
   // --------------------------------------------------------------------------
   const PHASES_CONFIG = {
     1: {
       name: "Fase 1: Activación y Consciencia",
       weeks: "Semanas 1 a 4",
       daysPerWeek: "4 días / semana",
-      scheduleSuggestion: "Días alternos (ej: Lun, Mié, Vie, Dom). 1 día de descanso intermedio.",
+      scheduleSuggestion: "Días alternos (ej: Lun, Mié, Vie, Dom). 1 día descanso intermedio.",
+      summary: "Fase 1: 4 días/sem • Duración: 9m 30s (3 series x 10 reps)",
       description: "50% fuerza de tensión | Aislamiento y relajación profunda.",
       type: "standard",
       tensionTime: 5,
@@ -22,16 +24,15 @@
       totalSets: 3,
       restBetweenSets: 60,
       postureWarning: false,
-      totalDurationFormatted: "9 min 30 s",
-      activeDurationFormatted: "7 min 30 s",
-      restDurationFormatted: "2 min 00 s"
+      totalDurationFormatted: "9 min 30 s"
     },
     2: {
       name: "Fase 2: Resistencia Veno-Oclusiva",
       weeks: "Semanas 5 a 8",
       daysPerWeek: "5 días / semana",
       scheduleSuggestion: "Lunes a Viernes. Descanso completo el fin de semana.",
-      description: "70-80% fuerza de tensión | Fortalecimiento vascular y veno-oclusivo.",
+      summary: "Fase 2: 5 días/sem • Duración: 15m 30s (3 series x 10 reps)",
+      description: "70-80% fuerza de tensión | Fortalecimiento veno-oclusivo sostenido.",
       type: "standard",
       tensionTime: 10,
       relaxTime: 15,
@@ -39,16 +40,15 @@
       totalSets: 3,
       restBetweenSets: 90,
       postureWarning: false,
-      totalDurationFormatted: "15 min 30 s",
-      activeDurationFormatted: "12 min 30 s",
-      restDurationFormatted: "3 min 00 s"
+      totalDurationFormatted: "15 min 30 s"
     },
     3: {
       name: "Fase 3: Potencia y Control Reflejo",
       weeks: "Semanas 9 a 12",
       daysPerWeek: "5 días / semana",
-      scheduleSuggestion: "Lunes a Viernes. Estímulo constante para fibras rápidas y lentas.",
-      description: "Bloque mixto: 10 Flicks (1s/1s) + 5 Contracciones sostenidas (10s/15s).",
+      scheduleSuggestion: "Lunes a Viernes. Estímulo fibras rápidas y lentas.",
+      summary: "Fase 3: 5 días/sem • Duración: 11m 15s (10 Flicks + 5 Sostenidas x 3 series)",
+      description: "Bloque mixto: 10 Flicks rápidos (1s/1s) + 5 Contracciones sostenidas (10s/15s).",
       type: "mixed",
       quickFlicksCount: 10,
       quickTensionTime: 1,
@@ -59,16 +59,15 @@
       totalSets: 3,
       restBetweenSets: 120,
       postureWarning: false,
-      totalDurationFormatted: "11 min 15 s",
-      activeDurationFormatted: "7 min 15 s",
-      restDurationFormatted: "4 min 00 s"
+      totalDurationFormatted: "11 min 15 s"
     },
     4: {
       name: "Fase 4: Integración Posicional",
       weeks: "Semana 13 en adelante",
       daysPerWeek: "3 días / semana",
-      scheduleSuggestion: "Fase de mantenimiento de por vida. Días alternos.",
-      description: "Tensión Máxima en postura de pie o sentado en contra de la gravedad.",
+      scheduleSuggestion: "Mantenimiento de por vida. Días alternos.",
+      summary: "Fase 4: 3 días/sem • Duración: 17m 00s (2 series x 15 reps - De pie/sentado)",
+      description: "Tensión Máxima en postura de pie o sentado contra la gravedad.",
       type: "standard",
       tensionTime: 10,
       relaxTime: 20,
@@ -76,83 +75,72 @@
       totalSets: 2,
       restBetweenSets: 120,
       postureWarning: true,
-      totalDurationFormatted: "17 min 00 s",
-      activeDurationFormatted: "15 min 00 s",
-      restDurationFormatted: "2 min 00 s"
+      totalDurationFormatted: "17 min 00 s"
     }
   };
 
-  // Circunferencia del círculo SVG (r=120 -> 2 * PI * 120 ≈ 753.98)
   const CIRCLE_CIRCUMFERENCE = 753.98;
 
   // --------------------------------------------------------------------------
-  // 2. ESTADO GLOBAL DE LA APLICACIÓN
+  // 2. ESTADO GLOBAL DE LA APP
   // --------------------------------------------------------------------------
   let currentPhaseId = 1;
-  let timerState = "IDLE"; // IDLE, TENSION, RELAXATION, REST, PAUSED, COMPLETED
+  let timerState = "IDLE"; // "IDLE", "TENSION", "RELAXATION", "REST", "PAUSED", "COMPLETED"
   let previousTimerState = null;
   let timerInterval = null;
-  
-  // Contadores de la rutina
+
   let currentSet = 1;
   let currentRep = 1;
   let timeRemaining = 0;
   let totalPhaseTime = 0;
-  let mixedSubState = "QUICK"; // "QUICK" o "SUSTAINED" (en Fase 3)
+  let mixedSubState = "QUICK"; // "QUICK" o "SUSTAINED" (Fase 3)
 
-  // Preferencias
   let isSoundEnabled = true;
   let isHapticEnabled = true;
-
-  // Audio Context (Web Audio API)
   let audioCtx = null;
 
   // --------------------------------------------------------------------------
-  // 3. REFERENCIAS AL DOM
+  // 3. CACHÉ DE ELEMENTOS DEL DOM
   // --------------------------------------------------------------------------
   const DOM = {
-    // Nav & Tabs
+    // Pestañas de Navegación SPA
     navBtns: document.querySelectorAll('.nav-btn'),
     tabViews: document.querySelectorAll('.tab-view'),
 
-    // Routine View Elements
-    phaseSelect: document.getElementById('phase-select'),
-    phaseInfo: document.getElementById('phase-info'),
+    // Selector Directo de Fases
+    phaseTabBtns: document.querySelectorAll('.phase-tab-btn'),
+    phaseSummaryText: document.getElementById('phase-summary-text'),
     postureAlert: document.getElementById('posture-alert'),
-    
-    // Timer SVG & Text
+
+    // Temporizador Circular
     circleProgress: document.getElementById('timer-circle-progress'),
     stateBadge: document.getElementById('timer-state-badge'),
     countdown: document.getElementById('timer-countdown'),
     sublabel: document.getElementById('timer-sublabel'),
-    
-    // Contadores de Repetición y Serie
+
+    // Métricas
     repCounter: document.getElementById('rep-counter'),
     setCounter: document.getElementById('set-counter'),
     repSubtext: document.getElementById('rep-subtext'),
     setSubtext: document.getElementById('set-subtext'),
-    btnRepMinus: document.getElementById('btn-rep-minus'),
-    btnRepPlus: document.getElementById('btn-rep-plus'),
-    btnSetMinus: document.getElementById('btn-set-minus'),
-    btnSetPlus: document.getElementById('btn-set-plus'),
 
-    // Controls
+    // Botón Único Principal y Enlaces Rápidos
     btnStartPause: document.getElementById('btn-start-pause'),
+    btnHeroIcon: document.getElementById('btn-hero-icon'),
     btnStartText: document.getElementById('btn-start-text'),
-    btnReset: document.getElementById('btn-reset'),
-    btnPrevRep: document.getElementById('btn-prev-rep'),
-    btnNextRep: document.getElementById('btn-next-rep'),
+    restSkipContainer: document.getElementById('rest-skip-container'),
     btnSkipRest: document.getElementById('btn-skip-rest'),
-    iconPlay: document.getElementById('icon-play'),
-    iconPause: document.getElementById('icon-pause'),
+    btnNextRep: document.getElementById('btn-next-rep'),
+    btnNextSet: document.getElementById('btn-next-set'),
+    btnReset: document.getElementById('btn-reset'),
 
-    // Settings Header
+    // Header Acciones
     btnSoundToggle: document.getElementById('btn-sound-toggle'),
     iconSoundOn: document.getElementById('icon-sound-on'),
     iconSoundOff: document.getElementById('icon-sound-off'),
     btnHapticToggle: document.getElementById('btn-haptic-toggle'),
 
-    // History & Stats
+    // Historial y Estadísticas
     statStreak: document.getElementById('stat-streak'),
     statTotal: document.getElementById('stat-total'),
     statMonth: document.getElementById('stat-month'),
@@ -160,7 +148,7 @@
     historyList: document.getElementById('history-list'),
     btnClearHistory: document.getElementById('btn-clear-history'),
 
-    // Modal & Banner
+    // Modales y Actualizaciones PWA
     completionModal: document.getElementById('completion-modal'),
     modalStreakBadge: document.getElementById('modal-streak-badge'),
     btnCloseModal: document.getElementById('btn-close-modal'),
@@ -174,14 +162,13 @@
   function init() {
     loadSettings();
     setupEventListeners();
-    updatePhaseUI();
-    resetTimerState();
+    selectPhase(1);
     loadAndRenderHistory();
     setupServiceWorkerLifecycle();
   }
 
   // --------------------------------------------------------------------------
-  // 5. MANEJO DE WEB AUDIO API & VIBRACIÓN (SONIDO POTENTE Y AUDIBLE)
+  // 5. AUDIO POTENTE & VIBRACIÓN ANDROID (SIN VOZ)
   // --------------------------------------------------------------------------
   function getAudioContext() {
     if (!audioCtx) {
@@ -201,24 +188,19 @@
     try {
       const ctx = getAudioContext();
       if (!ctx) return;
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
+      if (ctx.state === 'suspended') ctx.resume();
 
       const now = ctx.currentTime;
-
-      // Master Gain para volumen elevado y seguro
       const masterGain = ctx.createGain();
       masterGain.connect(ctx.destination);
-      masterGain.gain.setValueAtTime(0.9, now);
+      masterGain.gain.setValueAtTime(0.9, now); // Volumen alto y nítido
 
       if (type === 'tension') {
-        // Doble pitido agudo, energético y potente con onda triangular (muy audible en móviles)
+        // Tono ascendente potente (contracción enérgica)
         const tones = [
           { freq: 880, start: 0, dur: 0.12 },
-          { freq: 1175, start: 0.13, dur: 0.20 }
+          { freq: 1200, start: 0.12, dur: 0.22 }
         ];
-
         tones.forEach(t => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -233,12 +215,11 @@
         });
 
       } else if (type === 'relax') {
-        // Tono doble descendente suave pero con cuerpo (659Hz a 440Hz)
+        // Tono descendente suave pero audible (relajación / Kegel Inverso)
         const tones = [
-          { freq: 659, start: 0, dur: 0.14 },
-          { freq: 440, start: 0.15, dur: 0.28 }
+          { freq: 660, start: 0, dur: 0.14 },
+          { freq: 440, start: 0.14, dur: 0.28 }
         ];
-
         tones.forEach(t => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -253,28 +234,22 @@
         });
 
       } else if (type === 'rest') {
-        // Tono rítmico de campana de descanso (587Hz - 587Hz - 784Hz)
-        const tones = [
-          { freq: 587, start: 0, dur: 0.12 },
-          { freq: 587, start: 0.15, dur: 0.12 },
-          { freq: 784, start: 0.30, dur: 0.35 }
-        ];
-
-        tones.forEach(t => {
+        // Triple pitido de descanso entre series
+        [587, 587, 784].forEach((freq, idx) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
           osc.type = 'triangle';
-          osc.frequency.setValueAtTime(t.freq, now + t.start);
-          gain.gain.setValueAtTime(0.8, now + t.start);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + t.start + t.dur);
+          osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+          gain.gain.setValueAtTime(0.85, now + idx * 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.14 + 0.15);
           osc.connect(gain);
           gain.connect(masterGain);
-          osc.start(now + t.start);
-          osc.stop(now + t.start + t.dur);
+          osc.start(now + idx * 0.14);
+          osc.stop(now + idx * 0.14 + 0.15);
         });
 
       } else if (type === 'complete') {
-        // Fanfarria triunfal completa
+        // Fanfarria triunfal al terminar todas las series
         [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -303,19 +278,24 @@
   }
 
   // --------------------------------------------------------------------------
-  // 6. LÓGICA DE CONTROL DEL TEMPORIZADOR Y RUTINAS
+  // 6. GESTIÓN DE FASES Y ESTADO
   // --------------------------------------------------------------------------
-  function updatePhaseUI() {
+  function selectPhase(phaseId) {
+    currentPhaseId = phaseId;
+
+    // Actualizar botones de pestaña de fase
+    DOM.phaseTabBtns.forEach(btn => {
+      const p = parseInt(btn.getAttribute('data-phase'), 10);
+      if (p === phaseId) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
     const config = PHASES_CONFIG[currentPhaseId];
-    if (DOM.phaseInfo) {
-      DOM.phaseInfo.innerHTML = `
-        <div class="phase-meta">
-          <span class="freq-badge">${config.daysPerWeek}</span>
-          <span class="duration-badge">⏱️ Duración: ${config.totalDurationFormatted}</span>
-        </div>
-        <div class="duration-detail">⚡ Ejercicio activo: ${config.activeDurationFormatted} | ☕ Descanso: ${config.restDurationFormatted}</div>
-        <div class="schedule-tip">📅 <strong>Esquema:</strong> ${config.scheduleSuggestion}</div>
-      `;
+    if (DOM.phaseSummaryText) {
+      DOM.phaseSummaryText.textContent = config.summary;
     }
 
     if (DOM.postureAlert) {
@@ -326,10 +306,10 @@
       }
     }
 
-    resetTimerState();
+    resetTimer();
   }
 
-  function resetTimerState() {
+  function resetTimer() {
     clearInterval(timerInterval);
     timerInterval = null;
     timerState = "IDLE";
@@ -343,40 +323,43 @@
     timeRemaining = (config.type === "mixed") ? config.quickTensionTime : config.tensionTime;
     totalPhaseTime = timeRemaining;
 
-    updateTimerDisplay("CONTRAE / KEGEL", "tension-mode", "badge-tension", getSublabelForCurrentState("TENSION"));
-    updateCountersUI();
+    // UI Reset
+    updateTimerDisplay("CONTRAE / KEGEL", "tension-mode", "badge-tension", getSublabelForState("TENSION"));
     setCircleProgress(1);
+    updateCountersUI();
 
-    if (DOM.btnStartText) DOM.btnStartText.textContent = "Iniciar Rutina";
-    if (DOM.iconPlay) DOM.iconPlay.classList.remove('hidden');
-    if (DOM.iconPause) DOM.iconPause.classList.add('hidden');
+    // Reset Hero Button
+    if (DOM.btnHeroIcon) DOM.btnHeroIcon.textContent = "▶";
+    if (DOM.btnStartText) DOM.btnStartText.textContent = "INICIAR RUTINA";
+    if (DOM.btnStartPause) DOM.btnStartPause.classList.remove('running');
 
-    if (DOM.btnSkipRest) {
-      DOM.btnSkipRest.classList.add('hidden');
-    }
+    if (DOM.restSkipContainer) DOM.restSkipContainer.classList.add('hidden');
   }
 
-  function getSublabelForCurrentState(state) {
+  function getSublabelForState(state) {
     const config = PHASES_CONFIG[currentPhaseId];
     if (state === "TENSION") {
       if (config.type === "mixed") {
-        return mixedSubState === "QUICK" ? "⚡ CONTRAE RÁPIDO (1s)" : "💪 CONTRAE Y SOSTÉN (10s)";
+        return mixedSubState === "QUICK" ? "⚡ Contracción rápida (1 segundo)" : "💪 Contracción sostenida (10 segundos)";
       }
-      return currentPhaseId === 1 ? "💪 CONTRAE AL 50% DE FUERZA" : currentPhaseId === 2 ? "💪 CONTRAE AL 75-80% DE FUERZA" : "⚡ CONTRAE A MÁXIMA FUERZA (100%)";
+      return currentPhaseId === 1 ? "Aprieta suave (50% de fuerza)" : currentPhaseId === 2 ? "Aprieta firme (75-80% fuerza)" : "Aprieta con fuerza máxima (100%)";
     } else if (state === "RELAXATION") {
-      return "🌿 RELAJA / KEGEL INVERSO (Expande el periné)";
+      return "🌿 Relaja profundamente (Kegel Inverso)";
     } else if (state === "REST") {
-      return `☕ DESCANSO ENTRE SERIES (Próxima: Serie ${currentSet + 1} de ${config.totalSets})`;
+      return `☕ Descanso entre series. Respira con calma.`;
     }
     return "";
   }
 
+  // --------------------------------------------------------------------------
+  // 7. INICIO CON 1 SOLO CLIC (FEEDBACK INMEDIATO A 0 MS)
+  // --------------------------------------------------------------------------
   function toggleStartPause() {
     getAudioContext();
 
     if (timerState === "IDLE" || timerState === "PAUSED") {
       startTimer();
-    } else if (timerState === "TENSION" || timerState === "RELAXATION" || timerState === "REST") {
+    } else {
       pauseTimer();
     }
   }
@@ -384,17 +367,27 @@
   function startTimer() {
     if (timerState === "IDLE") {
       timerState = "TENSION";
-      setupStateTransition("TENSION");
+      const config = PHASES_CONFIG[currentPhaseId];
+      timeRemaining = (config.type === "mixed") ? config.quickTensionTime : config.tensionTime;
+      totalPhaseTime = timeRemaining;
+
+      // ¡RESPUESTA INMEDIATA a 0ms!: Sonido, vibración y display visual al instante
+      playSound('tension');
+      triggerHaptic([140, 50, 140]);
+      updateTimerDisplay("CONTRAE / KEGEL", "tension-mode", "badge-tension", getSublabelForState("TENSION"));
     } else if (timerState === "PAUSED") {
       timerState = previousTimerState || "TENSION";
     }
 
-    if (DOM.btnStartText) DOM.btnStartText.textContent = "Pausar";
-    if (DOM.iconPlay) DOM.iconPlay.classList.add('hidden');
-    if (DOM.iconPause) DOM.iconPause.classList.remove('hidden');
+    // Actualizar botón Hero
+    if (DOM.btnHeroIcon) DOM.btnHeroIcon.textContent = "⏸";
+    if (DOM.btnStartText) DOM.btnStartText.textContent = "PAUSAR";
+    if (DOM.btnStartPause) DOM.btnStartPause.classList.add('running');
+
+    updateCountersUI();
+    updateTimerUI();
 
     if (timerInterval) clearInterval(timerInterval);
-
     timerInterval = setInterval(tick, 1000);
   }
 
@@ -404,29 +397,31 @@
     clearInterval(timerInterval);
     timerInterval = null;
 
-    if (DOM.btnStartText) DOM.btnStartText.textContent = "Reanudar";
-    if (DOM.iconPlay) DOM.iconPlay.classList.remove('hidden');
-    if (DOM.iconPause) DOM.iconPause.classList.add('hidden');
-    if (DOM.sublabel) DOM.sublabel.textContent = "Pausado - Presiona Reanudar";
+    if (DOM.btnHeroIcon) DOM.btnHeroIcon.textContent = "▶";
+    if (DOM.btnStartText) DOM.btnStartText.textContent = "REANUDAR";
+    if (DOM.btnStartPause) DOM.btnStartPause.classList.remove('running');
+    if (DOM.sublabel) DOM.sublabel.textContent = "Pausado - Toca reanudar para continuar";
   }
 
+  // --------------------------------------------------------------------------
+  // 8. CRONÓMETRO Y AVANCE AUTOMÁTICO DE REPETICIONES Y SERIES
+  // --------------------------------------------------------------------------
   function tick() {
     timeRemaining--;
 
     if (timeRemaining < 0) {
-      advanceRoutineState();
+      advanceRoutine();
       return;
     }
 
     updateTimerUI();
   }
 
-  // Avanza de forma automática de Tensión -> Relajación -> Siguiente Rep / Descanso / Fin
-  function advanceRoutineState() {
+  function advanceRoutine() {
     const config = PHASES_CONFIG[currentPhaseId];
 
     if (timerState === "TENSION") {
-      // Pasa a la mitad de relajación de la repetición actual
+      // 1. Pasa a Relajación de la MISMA repetición
       timerState = "RELAXATION";
       if (config.type === "mixed") {
         timeRemaining = (mixedSubState === "QUICK") ? config.quickRelaxTime : config.sustainedRelaxTime;
@@ -434,76 +429,89 @@
         timeRemaining = config.relaxTime;
       }
       totalPhaseTime = timeRemaining;
-      setupStateTransition("RELAXATION");
+
+      playSound('relax');
+      triggerHaptic([70, 70, 70]);
+      updateTimerDisplay("RELAJA / KEGEL INVERSO", "relax-mode", "badge-relax", getSublabelForState("RELAXATION"));
+      if (DOM.restSkipContainer) DOM.restSkipContainer.classList.add('hidden');
 
     } else if (timerState === "RELAXATION") {
-      // Se completó la relajación de la repetición actual -> Avanza al número siguiente
+      // 2. Terminó la relajación -> Avanza la repetición
       if (config.type === "mixed") {
         if (mixedSubState === "QUICK") {
           if (currentRep < config.quickFlicksCount) {
             currentRep++;
-            timerState = "TENSION";
-            timeRemaining = config.quickTensionTime;
-            totalPhaseTime = timeRemaining;
-            setupStateTransition("TENSION");
+            startNextRepetition(config.quickTensionTime);
           } else {
-            // Completó los 10 flicks rápidos, pasa al bloque sostenido de 5 reps
+            // Completó los 10 flicks rápidos, pasa a las 5 repeticiones sostenidas
             mixedSubState = "SUSTAINED";
             currentRep = 1;
-            timerState = "TENSION";
-            timeRemaining = config.sustainedTensionTime;
-            totalPhaseTime = timeRemaining;
-            setupStateTransition("TENSION");
+            startNextRepetition(config.sustainedTensionTime);
           }
-        } else { // SUSTAINED
+        } else {
+          // Bloque sostenido
           if (currentRep < config.sustainedCount) {
             currentRep++;
-            timerState = "TENSION";
-            timeRemaining = config.sustainedTensionTime;
-            totalPhaseTime = timeRemaining;
-            setupStateTransition("TENSION");
+            startNextRepetition(config.sustainedTensionTime);
           } else {
             // Terminó la serie completa de Fase 3
-            checkSetCompletion();
+            finishSet();
           }
         }
       } else {
-        // Fases estándar 1, 2, 4
+        // Fases 1, 2, 4
         if (currentRep < config.repsPerSet) {
           currentRep++;
-          timerState = "TENSION";
-          timeRemaining = config.tensionTime;
-          totalPhaseTime = timeRemaining;
-          setupStateTransition("TENSION");
+          startNextRepetition(config.tensionTime);
         } else {
-          checkSetCompletion();
+          finishSet();
         }
       }
 
     } else if (timerState === "REST") {
-      // Terminó el descanso entre series: Inicia la siguiente serie
+      // 3. Terminó el descanso entre series -> Iniciar siguiente serie
       currentSet++;
       currentRep = 1;
       mixedSubState = "QUICK";
-      timerState = "TENSION";
-      timeRemaining = (config.type === "mixed") ? config.quickTensionTime : config.tensionTime;
-      totalPhaseTime = timeRemaining;
-      setupStateTransition("TENSION");
+      const tensionDuration = (config.type === "mixed") ? config.quickTensionTime : config.tensionTime;
+      startNextRepetition(tensionDuration);
     }
 
     updateCountersUI();
     updateTimerUI();
   }
 
-  function checkSetCompletion() {
+  function startNextRepetition(duration) {
+    timerState = "TENSION";
+    timeRemaining = duration;
+    totalPhaseTime = timeRemaining;
+
+    playSound('tension');
+    triggerHaptic([140, 50, 140]);
+    updateTimerDisplay("CONTRAE / KEGEL", "tension-mode", "badge-tension", getSublabelForState("TENSION"));
+    if (DOM.restSkipContainer) DOM.restSkipContainer.classList.add('hidden');
+  }
+
+  function finishSet() {
     const config = PHASES_CONFIG[currentPhaseId];
 
     if (currentSet < config.totalSets) {
-      // Inicia descanso entre series
+      // Pasa a descanso entre series
       timerState = "REST";
       timeRemaining = config.restBetweenSets;
       totalPhaseTime = timeRemaining;
-      setupStateTransition("REST");
+
+      playSound('rest');
+      triggerHaptic([200, 100, 200]);
+      updateTimerDisplay("DESCANSO", "rest-mode", "badge-rest", `Descanso entre series • Próxima: Serie ${currentSet + 1} de ${config.totalSets}`);
+
+      // Mostrar botón gigante para saltar descanso si el usuario no quiere esperar
+      if (DOM.restSkipContainer) {
+        DOM.restSkipContainer.classList.remove('hidden');
+      }
+      if (DOM.btnSkipRest) {
+        DOM.btnSkipRest.textContent = `⏩ Iniciar Serie ${currentSet + 1} de ${config.totalSets}`;
+      }
     } else {
       // Rutina completada con éxito
       completeWorkout();
@@ -511,80 +519,8 @@
   }
 
   // --------------------------------------------------------------------------
-  // CONTROLES MANUALES DIRECTOS: +/- REPS Y +/- SERIES
+  // 9. NAVEGACIÓN MANUAL (SALTAR REP, SALTAR SERIE, SALTAR DESCANSO)
   // --------------------------------------------------------------------------
-  function incrementRep() {
-    getAudioContext();
-    const config = PHASES_CONFIG[currentPhaseId];
-    const maxReps = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickFlicksCount : config.sustainedCount) : config.repsPerSet;
-
-    if (currentRep < maxReps) {
-      currentRep++;
-    } else if (currentSet < config.totalSets) {
-      currentSet++;
-      currentRep = 1;
-    }
-
-    timeRemaining = (timerState === "RELAXATION") ? config.relaxTime : config.tensionTime;
-    totalPhaseTime = timeRemaining;
-    updateCountersUI();
-    updateTimerUI();
-    playSound('tension');
-  }
-
-  function decrementRep() {
-    getAudioContext();
-    const config = PHASES_CONFIG[currentPhaseId];
-
-    if (currentRep > 1) {
-      currentRep--;
-    } else if (currentSet > 1) {
-      currentSet--;
-      currentRep = (config.type === "mixed") ? config.sustainedCount : config.repsPerSet;
-    }
-
-    timeRemaining = (timerState === "RELAXATION") ? config.relaxTime : config.tensionTime;
-    totalPhaseTime = timeRemaining;
-    updateCountersUI();
-    updateTimerUI();
-  }
-
-  function incrementSet() {
-    getAudioContext();
-    const config = PHASES_CONFIG[currentPhaseId];
-
-    if (currentSet < config.totalSets) {
-      currentSet++;
-      currentRep = 1;
-      timerState = "TENSION";
-      timeRemaining = config.tensionTime;
-      totalPhaseTime = timeRemaining;
-      setupStateTransition("TENSION");
-    }
-
-    updateCountersUI();
-    updateTimerUI();
-    playSound('tension');
-  }
-
-  function decrementSet() {
-    getAudioContext();
-    const config = PHASES_CONFIG[currentPhaseId];
-
-    if (currentSet > 1) {
-      currentSet--;
-      currentRep = 1;
-      timerState = "TENSION";
-      timeRemaining = config.tensionTime;
-      totalPhaseTime = timeRemaining;
-      setupStateTransition("TENSION");
-    }
-
-    updateCountersUI();
-    updateTimerUI();
-  }
-
-  // Navegación manual: Siguiente Repetición o Paso
   function nextRep() {
     getAudioContext();
     const config = PHASES_CONFIG[currentPhaseId];
@@ -595,52 +531,52 @@
     }
 
     if (timerState === "TENSION") {
-      // Salta a la relajación de la misma repetición
+      // Salta directamente a relajación
       timerState = "RELAXATION";
-      if (config.type === "mixed") {
-        timeRemaining = (mixedSubState === "QUICK") ? config.quickRelaxTime : config.sustainedRelaxTime;
-      } else {
-        timeRemaining = config.relaxTime;
-      }
+      timeRemaining = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickRelaxTime : config.sustainedRelaxTime) : config.relaxTime;
       totalPhaseTime = timeRemaining;
-      setupStateTransition("RELAXATION");
+      playSound('relax');
+      triggerHaptic([70, 70, 70]);
+      updateTimerDisplay("RELAJA / KEGEL INVERSO", "relax-mode", "badge-relax", getSublabelForState("RELAXATION"));
     } else {
       // Salta a la siguiente repetición
-      incrementRep();
-      timerState = "TENSION";
-      timeRemaining = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickTensionTime : config.sustainedTensionTime) : config.tensionTime;
-      totalPhaseTime = timeRemaining;
-      setupStateTransition("TENSION");
+      const maxReps = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickFlicksCount : config.sustainedCount) : config.repsPerSet;
+      if (currentRep < maxReps) {
+        currentRep++;
+      } else {
+        if (config.type === "mixed" && mixedSubState === "QUICK") {
+          mixedSubState = "SUSTAINED";
+          currentRep = 1;
+        } else if (currentSet < config.totalSets) {
+          currentSet++;
+          currentRep = 1;
+          mixedSubState = "QUICK";
+        }
+      }
+      const tDur = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickTensionTime : config.sustainedTensionTime) : config.tensionTime;
+      startNextRepetition(tDur);
     }
 
     updateCountersUI();
     updateTimerUI();
   }
 
-  // Navegación manual: Repetición o Paso Anterior
-  function prevRep() {
+  function nextSet() {
     getAudioContext();
     const config = PHASES_CONFIG[currentPhaseId];
-
-    if (timerState === "RELAXATION") {
-      // Regresa a la tensión de la misma repetición
-      timerState = "TENSION";
-      timeRemaining = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickTensionTime : config.sustainedTensionTime) : config.tensionTime;
-      totalPhaseTime = timeRemaining;
-      setupStateTransition("TENSION");
+    if (currentSet < config.totalSets) {
+      currentSet++;
+      currentRep = 1;
+      mixedSubState = "QUICK";
+      const tDur = (config.type === "mixed") ? config.quickTensionTime : config.tensionTime;
+      startNextRepetition(tDur);
     } else {
-      decrementRep();
-      timerState = "TENSION";
-      timeRemaining = (config.type === "mixed") ? (mixedSubState === "QUICK" ? config.quickTensionTime : config.sustainedTensionTime) : config.tensionTime;
-      totalPhaseTime = timeRemaining;
-      setupStateTransition("TENSION");
+      completeWorkout();
     }
-
     updateCountersUI();
     updateTimerUI();
   }
 
-  // Saltar descanso entre series
   function skipRest() {
     getAudioContext();
     const config = PHASES_CONFIG[currentPhaseId];
@@ -649,37 +585,15 @@
     }
     currentRep = 1;
     mixedSubState = "QUICK";
-    timerState = "TENSION";
-    timeRemaining = (config.type === "mixed") ? config.quickTensionTime : config.tensionTime;
-    totalPhaseTime = timeRemaining;
-    setupStateTransition("TENSION");
+    const tDur = (config.type === "mixed") ? config.quickTensionTime : config.tensionTime;
+    startNextRepetition(tDur);
     updateCountersUI();
     updateTimerUI();
   }
 
-  function setupStateTransition(newState) {
-    if (newState === "TENSION") {
-      playSound('tension');
-      triggerHaptic([140, 50, 140]);
-      updateTimerDisplay("CONTRAE / KEGEL", "tension-mode", "badge-tension", getSublabelForCurrentState("TENSION"));
-      if (DOM.btnSkipRest) DOM.btnSkipRest.classList.add('hidden');
-    } else if (newState === "RELAXATION") {
-      playSound('relax');
-      triggerHaptic([70, 70, 70]);
-      updateTimerDisplay("RELAJA / KEGEL INVERSO", "relax-mode", "badge-relax", getSublabelForCurrentState("RELAXATION"));
-      if (DOM.btnSkipRest) DOM.btnSkipRest.classList.add('hidden');
-    } else if (newState === "REST") {
-      playSound('rest');
-      triggerHaptic([200, 100, 200]);
-      updateTimerDisplay("DESCANSO", "rest-mode", "badge-rest", getSublabelForCurrentState("REST"));
-      if (DOM.btnSkipRest) {
-        DOM.btnSkipRest.classList.remove('hidden');
-        DOM.btnSkipRest.textContent = `⏩ Iniciar Serie ${currentSet + 1}`;
-      }
-    }
-    updateCountersUI();
-  }
-
+  // --------------------------------------------------------------------------
+  // 10. DISPLAY DEL TEMPORIZADOR Y CONTADORES
+  // --------------------------------------------------------------------------
   function updateTimerUI() {
     if (DOM.countdown) {
       DOM.countdown.textContent = timeRemaining < 10 ? `0${timeRemaining}` : timeRemaining;
@@ -687,7 +601,6 @@
     const ratio = totalPhaseTime > 0 ? timeRemaining / totalPhaseTime : 0;
     setCircleProgress(ratio);
 
-    // Actualizar subtexto de descanso en tiempo real si está en descanso
     if (timerState === "REST" && DOM.repSubtext) {
       DOM.repSubtext.textContent = `Descanso (${timeRemaining}s)`;
     }
@@ -719,31 +632,30 @@
     const config = PHASES_CONFIG[currentPhaseId];
     if (!config) return;
 
-    let totalRepsDisplay = config.repsPerSet;
+    let totalRepsStr = `${config.repsPerSet}`;
     if (config.type === "mixed") {
-      totalRepsDisplay = (mixedSubState === "QUICK") ? `${config.quickFlicksCount} (F)` : `${config.sustainedCount} (S)`;
+      totalRepsStr = (mixedSubState === "QUICK") ? `${config.quickFlicksCount} (Flicks)` : `${config.sustainedCount} (Sost.)`;
     }
 
     if (DOM.repCounter) {
-      DOM.repCounter.textContent = `${currentRep} / ${totalRepsDisplay}`;
+      DOM.repCounter.textContent = `${currentRep} de ${totalRepsStr}`;
     }
-
     if (DOM.setCounter) {
-      DOM.setCounter.textContent = `${currentSet} / ${config.totalSets}`;
+      DOM.setCounter.textContent = `${currentSet} de ${config.totalSets}`;
     }
 
-    if (timerState === "REST") {
-      if (DOM.repSubtext) DOM.repSubtext.textContent = `Descanso (${timeRemaining}s)`;
-      if (DOM.setSubtext) DOM.setSubtext.textContent = `Serie ${currentSet} lista → Próx: ${currentSet + 1}`;
-    } else if (timerState === "TENSION") {
-      if (DOM.repSubtext) DOM.repSubtext.textContent = `⚡ Contrayendo (${currentRep}/${totalRepsDisplay})`;
-      if (DOM.setSubtext) DOM.setSubtext.textContent = `Serie ${currentSet} de ${config.totalSets}`;
+    if (timerState === "TENSION") {
+      if (DOM.repSubtext) DOM.repSubtext.textContent = `⚡ Contrayendo`;
+      if (DOM.setSubtext) DOM.setSubtext.textContent = `Serie en curso`;
     } else if (timerState === "RELAXATION") {
-      if (DOM.repSubtext) DOM.repSubtext.textContent = `🌿 Kegel Inverso (${currentRep}/${totalRepsDisplay})`;
-      if (DOM.setSubtext) DOM.setSubtext.textContent = `Serie ${currentSet} de ${config.totalSets}`;
+      if (DOM.repSubtext) DOM.repSubtext.textContent = `🌿 Kegel Inverso`;
+      if (DOM.setSubtext) DOM.setSubtext.textContent = `Serie en curso`;
+    } else if (timerState === "REST") {
+      if (DOM.repSubtext) DOM.repSubtext.textContent = `☕ Descanso (${timeRemaining}s)`;
+      if (DOM.setSubtext) DOM.setSubtext.textContent = `Próx: Serie ${currentSet + 1}`;
     } else {
-      if (DOM.repSubtext) DOM.repSubtext.textContent = "Listo para iniciar";
-      if (DOM.setSubtext) DOM.setSubtext.textContent = "Listo para iniciar";
+      if (DOM.repSubtext) DOM.repSubtext.textContent = `Listo`;
+      if (DOM.setSubtext) DOM.setSubtext.textContent = `Listo`;
     }
   }
 
@@ -764,12 +676,12 @@
       DOM.completionModal.classList.remove('hidden');
     }
 
-    resetTimerState();
+    resetTimer();
     loadAndRenderHistory();
   }
 
   // --------------------------------------------------------------------------
-  // 7. GESTIÓN DE PROGRESO & LOCALSTORAGE
+  // 11. HISTORIAL & LOCALSTORAGE
   // --------------------------------------------------------------------------
   const STORAGE_KEY_HISTORY = "control_pelvico_history_v1";
   const STORAGE_KEY_SETTINGS = "control_pelvico_settings_v1";
@@ -804,7 +716,6 @@
 
   function calculateStreak(history) {
     if (!history || history.length === 0) return 0;
-
     const uniqueDates = Array.from(new Set(history.map(item => item.dateStr))).sort().reverse();
     if (uniqueDates.length === 0) return 0;
 
@@ -835,7 +746,6 @@
 
   function loadAndRenderHistory() {
     const history = getHistory();
-
     const streak = calculateStreak(history);
     const total = history.length;
 
@@ -871,7 +781,6 @@
       dayCell.className = `activity-day ${isActive ? 'active' : ''}`;
       dayCell.textContent = d.getDate();
       dayCell.title = `${dStr}: ${isActive ? 'Completado' : 'Sin registro'}`;
-
       DOM.activityGrid.appendChild(dayCell);
     }
   }
@@ -900,21 +809,21 @@
           <div class="history-item-date">${formattedDate}</div>
           <div class="history-item-phase">${item.phaseName}</div>
         </div>
-        <span class="state-badge badge-relax">✓ OK</span>
+        <span class="state-badge badge-relax">✓ Completada</span>
       `;
       DOM.historyList.appendChild(itemEl);
     });
   }
 
   function clearHistory() {
-    if (confirm("¿Estás seguro de que deseas borrar todo el historial de entrenamientos?")) {
+    if (confirm("¿Deseas reiniciar y borrar el historial de entrenamientos?")) {
       localStorage.removeItem(STORAGE_KEY_HISTORY);
       loadAndRenderHistory();
     }
   }
 
   // --------------------------------------------------------------------------
-  // 8. PREFERENCIAS DE SONIDO Y HÁPTICA
+  // 12. PREFERENCIAS DE SONIDO Y VIBRACIÓN
   // --------------------------------------------------------------------------
   function loadSettings() {
     try {
@@ -948,21 +857,19 @@
         DOM.iconSoundOff.classList.remove('hidden');
       }
     }
-
     if (DOM.btnHapticToggle) {
       DOM.btnHapticToggle.style.opacity = isHapticEnabled ? '1' : '0.4';
     }
   }
 
   // --------------------------------------------------------------------------
-  // 9. EVENT LISTENERS
+  // 13. EVENT LISTENERS
   // --------------------------------------------------------------------------
   function setupEventListeners() {
-    // Pestañas SPA
+    // Pestañas de Navegación Móvil (Entrenador, Guía, Historial)
     DOM.navBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         const targetViewId = btn.getAttribute('data-target');
-        
         DOM.navBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
@@ -976,40 +883,34 @@
       });
     });
 
-    // Selector de Fase
-    if (DOM.phaseSelect) {
-      DOM.phaseSelect.addEventListener('change', (e) => {
-        currentPhaseId = parseInt(e.target.value, 10);
-        updatePhaseUI();
+    // Pestañas directas de Fase (Fase 1, 2, 3, 4)
+    DOM.phaseTabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const phase = parseInt(btn.getAttribute('data-phase'), 10);
+        selectPhase(phase);
       });
-    }
+    });
 
-    // Controles Principales
+    // BOTÓN ÚNICO HERO PRINCIPAL
     if (DOM.btnStartPause) DOM.btnStartPause.addEventListener('click', toggleStartPause);
-    if (DOM.btnReset) DOM.btnReset.addEventListener('click', resetTimerState);
 
-    // Controles Secundarios de Navegación Manual
-    if (DOM.btnPrevRep) DOM.btnPrevRep.addEventListener('click', prevRep);
+    // Enlaces de navegación rápida
     if (DOM.btnNextRep) DOM.btnNextRep.addEventListener('click', nextRep);
+    if (DOM.btnNextSet) DOM.btnNextSet.addEventListener('click', nextSet);
+    if (DOM.btnReset) DOM.btnReset.addEventListener('click', resetTimer);
     if (DOM.btnSkipRest) DOM.btnSkipRest.addEventListener('click', skipRest);
 
-    // Botones Stepper directos (+ y -) en Repetición y Serie
-    if (DOM.btnRepPlus) DOM.btnRepPlus.addEventListener('click', incrementRep);
-    if (DOM.btnRepMinus) DOM.btnRepMinus.addEventListener('click', decrementRep);
-    if (DOM.btnSetPlus) DOM.btnSetPlus.addEventListener('click', incrementSet);
-    if (DOM.btnSetMinus) DOM.btnSetMinus.addEventListener('click', decrementSet);
-
-    // Tocar directamente los números también avanza
+    // Tocar las métricas también avanza
     if (DOM.repCounter) {
       DOM.repCounter.style.cursor = 'pointer';
-      DOM.repCounter.addEventListener('click', incrementRep);
+      DOM.repCounter.addEventListener('click', nextRep);
     }
     if (DOM.setCounter) {
       DOM.setCounter.style.cursor = 'pointer';
-      DOM.setCounter.addEventListener('click', incrementSet);
+      DOM.setCounter.addEventListener('click', nextSet);
     }
 
-    // Toggles de Sonido y Háptica
+    // Toggle Sonido y Háptica
     if (DOM.btnSoundToggle) {
       DOM.btnSoundToggle.addEventListener('click', () => {
         isSoundEnabled = !isSoundEnabled;
@@ -1026,21 +927,21 @@
       });
     }
 
-    // Modal
+    // Modal de finalización
     if (DOM.btnCloseModal) {
       DOM.btnCloseModal.addEventListener('click', () => {
         if (DOM.completionModal) DOM.completionModal.classList.add('hidden');
       });
     }
 
-    // Borrar Historial
+    // Borrar historial
     if (DOM.btnClearHistory) {
       DOM.btnClearHistory.addEventListener('click', clearHistory);
     }
   }
 
   // --------------------------------------------------------------------------
-  // 10. CICLO DE VIDA DEL SERVICE WORKER & ACTUALIZACIÓN AUTOMÁTICA
+  // 14. SERVICE WORKER & ACTUALIZACIÓN INSTANTÁNEA
   // --------------------------------------------------------------------------
   function setupServiceWorkerLifecycle() {
     if (!('serviceWorker' in navigator)) return;
@@ -1048,22 +949,17 @@
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
         .then(registration => {
-          console.log('[PWA] Service Worker registrado:', registration.scope);
-
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
             if (!newWorker) return;
-
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                showUpdateBanner();
+                if (DOM.updateBanner) DOM.updateBanner.classList.remove('hidden');
               }
             });
           });
         })
-        .catch(err => {
-          console.warn('[PWA] Error en Service Worker:', err);
-        });
+        .catch(err => console.warn('[PWA] Error SW:', err));
     });
 
     let refreshing = false;
@@ -1091,12 +987,7 @@
     }
   }
 
-  function showUpdateBanner() {
-    if (DOM.updateBanner) {
-      DOM.updateBanner.classList.remove('hidden');
-    }
-  }
-
+  // Ejecución
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
